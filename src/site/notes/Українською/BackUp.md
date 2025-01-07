@@ -1,5 +1,5 @@
 ---
-{"title":"Ми не зброя війни цифровий інструмент - BackUp","dg-publish":true,"dg-metatags":null,"dg-home":null,"permalink":"/ukrayinskoyu/back-up/","dgPassFrontmatter":true,"noteIcon":""}
+{"title":"BackUp","dg-publish":true,"dg-metatags":null,"dg-home":null,"permalink":"/ukrayinskoyu/back-up/","dgPassFrontmatter":true,"noteIcon":""}
 ---
 
 
