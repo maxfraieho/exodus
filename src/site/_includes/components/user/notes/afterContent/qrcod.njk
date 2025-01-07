@@ -1,0 +1,41 @@
+<style>
+  .qr-code-container {
+    text-align: center;
+  }
+</style>
+<div class="qr-code-container">
+  <canvas id="qrcode"></canvas>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/qrious/dist/qrious.min.js"></script>
+<script type="text/javascript">
+  var qrcode = new QRious({
+    element: document.getElementById("qrcode"),
+    value: "https://griplywife.pp.ua/{{ page.url | replace('/', '', true) }}",
+    size: 120,
+    background: "#FAF8F8",
+    foreground: "#21212C",
+    level: "L"
+  });
+</script>
+  {% endif %}
+{% else %}
+<style>
+  .qr-code-container {
+    text-align: center;
+  }
+</style>
+<div class="qr-code-container">
+  <canvas id="qrcode"></canvas>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/qrious/dist/qrious.min.js"></script>
+<script type="text/javascript">
+  var qrcode = new QRious({
+    element: document.getElementById("qrcode"),
+    value: "https://griplywife.pp.ua/{{ page.url | replace('/', '', true) }}",
+    size: 120,
+    background: "#FAF8F8",
+    foreground: "#21212C",
+    level: "L"
+  });
+</script>
+{% endif %}
