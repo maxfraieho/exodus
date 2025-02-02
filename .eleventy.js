@@ -94,6 +94,48 @@ function getAnchorAttributes(filePath, linkTitle) {
 const tagRegex = /(^|\s|\>)(#[^\s!@#$%^&*()=+\.,\[{\]};:'"?><]+)(?!([^<]*>))/g;
 
 module.exports = function (eleventyConfig) {
+
+  eleventyConfig.addShortcode("youtube", (videoURL, title) => {
+    const url = new URL(videoURL);
+    const id = url.searchParams.get("v");
+    return `
+<iframe class="yt-shortcode" src="https://www.youtube-nocookie.com/embed/${id}" title="YouTube video player${
+      title ? ` for ${title}` : ""
+    }" frameborder="0" allowfullscreen></iframe>
+`;
+  });
+ 
+ eleventyConfig.addShortcode("audioPlayer", (audioSrc, audioTitle) => {
+  if (!audioSrc) {
+    console.error("Audio source is required.");
+    return ""; // Return empty string if audio source is not provided
+  }
+  return `
+<audio controls>
+  <source src="${audioSrc}" type="audio/mpeg">
+  Your browser does not support the audio element.
+</audio>
+${audioTitle ? `<p>${audioTitle}</p>` : ""}
+`;
+});
+
+
+
+eleventyConfig.addShortcode("tiktok", (videoURL) => {
+    const url = new URL(videoURL);
+    const videoId = url.pathname.split("/").pop();
+    if (!videoId) {
+        console.error("Unable to extract video ID from the provided URL:", videoURL);
+        return ""; // Return empty string if video ID cannot be extracted
+    }
+    return `
+<blockquote class="tiktok-embed" cite="${videoURL}" data-video-id="${videoId}">
+  <section> </section>
+</blockquote>
+<script async src="https://www.tiktok.com/embed.js"></script>
+`;
+});
+
   eleventyConfig.setLiquidOptions({
     dynamicPartials: true,
   });
