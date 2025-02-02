@@ -105,13 +105,15 @@ module.exports = function (eleventyConfig) {
 `;
   });
  
-  eleventyConfig.addShortcode("audioPlayer", function (src, altText) {
-    return `<audio controls>
-              <source src="${src}" type="audio/mpeg">
-              ${altText}
-            </audio>`;
-  });
-
+// Додаємо шорткод "audioPlayer"
+eleventyConfig.addShortcode("audioPlayer", function(url, description = "") {
+  return `
+<audio controls preload="none" style="width: 100%;">
+<source src="${url}" type="audio/mpeg">
+Ваш браузер не підтримує відтворення аудіо.
+</audio>
+<p>${description}</p>
+  `;
 
 
 eleventyConfig.addShortcode("tiktok", (videoURL) => {
