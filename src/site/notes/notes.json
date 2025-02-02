@@ -1,4 +1,4 @@
 {
     "tags": "note",
-    "templateEngineOverride": "md"
+    "templateEngineOverride": "njk,md"
 }

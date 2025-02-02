@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="uk">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+  <style>
+    body {
+      background-color: black;
+      color: white;
+    }
+
+    .container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+    }
+
+    .image {
+      width: 80%;
+      max-width: 600px;
+    }
+
+    .title {
+      color: #D81B60;
+      font-size: 1.5em; /* Зменште розмір тексту */
+      margin-top: 20px;
+      text-align: center; /* Додайте вирівнювання по центру */
+    }
+
+    .btn {
+      background-color: #F58233;
+      border: none;
+      color: white;
+      padding: 0.5em 1em; /* Зменште внутрішні відступи */
+      cursor: pointer;
+      font-size: 1em; /* Зменште розмір тексту */
+      margin-top: 10px; /* Зменште відступ зверху */
+    }
+
+    .btn:hover {
+      background-color: RoyalBlue;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+        <div style="text-align: center;">
+            <a href="https://handyman.pp.ua" style="text-decoration: none; display: inline-block; margin-bottom: 10px; position: relative; overflow: hidden; transform: scale(0.90);">
+                <img src="./src/site/favicon.svg" alt="Повернутись до блогу майстра" style="width: 240px; height: 240px; position: relative; z-index: 1; border: 2px solid #F58233; border-radius: 8px; transition: opacity 0.3s;">
+                <span style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-color: #F58233; opacity: 0; z-index: 0;"></span>
+            </a>
+        </div>
+    <h2 class="title">Завантажити файл бази знань</h2>
+    <button class="btn" onclick="forceDownload(this)" data-href="https://2073.pp.ua/output.pdf" download="output.pdf">
+      <i class="fa fa-download"></i> Завантажити
+    </button>
+  </div>
+
+  <script>
+    function forceDownload(link) {
+      var url = link.getAttribute("data-href");
+      var fileName = link.getAttribute("download");
+      link.innerText = "";
+      var xhr = new XMLHttpRequest();
+      xhr.open("GET", url, true);
+      xhr.responseType = "blob";
+      xhr.onload = function () {
+        var urlCreator = window.URL || window.webkitURL;
+        var imageUrl = urlCreator.createObjectURL(this.response);
+        var tag = document.createElement('a');
+        tag.href = imageUrl;
+        tag.download = fileName;
+        document.body.appendChild(tag);
+        tag.click();
+        document.body.removeChild(tag);
+        link.innerText = "Завантажити";
+      }
+      xhr.send();
+    }
+  </script>
+</body>
+
+</html>

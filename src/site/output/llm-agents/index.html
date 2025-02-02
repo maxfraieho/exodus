@@ -1,0 +1,1255 @@
+<html>
+
+<head>
+<meta http-equiv=Content-Type content="text/html; charset=utf-8">
+<meta name=Generator content="Microsoft Word 15 (filtered)">
+<title>What Are AI Agents? (for True Epub)</title>
+<style>
+<!--
+ /* Font Definitions */
+ @font-face
+	{font-family:"Cambria Math";
+	panose-1:2 4 5 3 5 4 6 3 2 4;}
+@font-face
+	{font-family:Cambria;
+	panose-1:2 4 5 3 5 4 6 3 2 4;}
+@font-face
+	{font-family:Consolas;
+	panose-1:2 11 6 9 2 2 4 3 2 4;}
+@font-face
+	{font-family:"Noto Serif";}
+ /* Style Definitions */
+ p.MsoNormal, li.MsoNormal, div.MsoNormal
+	{margin-top:0in;
+	margin-right:0in;
+	margin-bottom:17.25pt;
+	margin-left:0in;
+	line-height:21.0pt;
+	font-size:12.0pt;
+	font-family:"Noto Serif";}
+h1
+	{margin-top:0in;
+	margin-right:0in;
+	margin-bottom:23.0pt;
+	margin-left:0in;
+	line-height:32.95pt;
+	border:none;
+	padding:0in;
+	font-size:21.5pt;
+	font-family:"Noto Serif";
+	color:#3D3B49;
+	font-weight:normal;}
+h2
+	{margin-top:0in;
+	margin-right:0in;
+	margin-bottom:17.25pt;
+	margin-left:0in;
+	line-height:25.5pt;
+	border:none;
+	padding:0in;
+	font-size:17.0pt;
+	font-family:"Noto Serif";
+	color:#3D3B49;}
+h3
+	{margin-top:0in;
+	margin-right:0in;
+	margin-bottom:17.25pt;
+	margin-left:0in;
+	text-align:center;
+	line-height:10.75pt;
+	border:none;
+	padding:0in;
+	font-size:9.0pt;
+	font-family:"Noto Serif";
+	color:#3D3B49;
+	font-weight:normal;}
+p.Para01, li.Para01, div.Para01
+	{mso-style-name:"Para 01";
+	margin-top:0in;
+	margin-right:0in;
+	margin-bottom:17.25pt;
+	margin-left:0in;
+	line-height:21.0pt;
+	font-size:12.0pt;
+	font-family:"Noto Serif";
+	font-style:italic;}
+p.Para04, li.Para04, div.Para04
+	{mso-style-name:"Para 04";
+	margin:0in;
+	line-height:21.0pt;
+	border:none;
+	padding:0in;
+	font-size:12.0pt;
+	font-family:"Noto Serif";
+	color:black;}
+p.Para05, li.Para05, div.Para05
+	{mso-style-name:"Para 05";
+	margin-top:23.0pt;
+	margin-right:0in;
+	margin-bottom:23.0pt;
+	margin-left:0in;
+	text-align:center;
+	line-height:18.0pt;
+	border:none;
+	padding:0in;
+	font-size:12.0pt;
+	font-family:"Cambria",serif;
+	color:black;}
+p.Para07, li.Para07, div.Para07
+	{mso-style-name:"Para 07";
+	margin:0in;
+	line-height:21.0pt;
+	font-size:12.0pt;
+	font-family:"Noto Serif";
+	color:black;}
+p.Para08, li.Para08, div.Para08
+	{mso-style-name:"Para 08";
+	margin:0in;
+	line-height:21.0pt;
+	font-size:12.0pt;
+	font-family:"Noto Serif";
+	font-style:italic;}
+p.Para09, li.Para09, div.Para09
+	{mso-style-name:"Para 09";
+	margin-top:0in;
+	margin-right:0in;
+	margin-bottom:23.0pt;
+	margin-left:0in;
+	line-height:14.4pt;
+	border:none;
+	padding:0in;
+	font-size:12.0pt;
+	font-family:"Cambria",serif;
+	color:black;}
+p.Para10, li.Para10, div.Para10
+	{mso-style-name:"Para 10";
+	margin-top:17.25pt;
+	margin-right:0in;
+	margin-bottom:17.25pt;
+	margin-left:0in;
+	line-height:18.0pt;
+	background:#EEF2F6;
+	border:none;
+	padding:0in;
+	font-size:12.0pt;
+	font-family:Consolas;
+	color:#3D3B49;}
+p.Para11, li.Para11, div.Para11
+	{mso-style-name:"Para 11";
+	margin-top:17.25pt;
+	margin-right:0in;
+	margin-bottom:17.25pt;
+	margin-left:0in;
+	line-height:18.0pt;
+	background:#EEF2F6;
+	border:none;
+	padding:0in;
+	font-size:12.0pt;
+	font-family:Consolas;
+	color:#000088;}
+p.Para12, li.Para12, div.Para12
+	{mso-style-name:"Para 12";
+	margin-top:17.25pt;
+	margin-right:0in;
+	margin-bottom:17.25pt;
+	margin-left:0in;
+	line-height:21.0pt;
+	font-size:12.0pt;
+	font-family:"Noto Serif";}
+p.Para13, li.Para13, div.Para13
+	{mso-style-name:"Para 13";
+	margin-top:0in;
+	margin-right:0in;
+	margin-bottom:17.25pt;
+	margin-left:0in;
+	line-height:21.0pt;
+	font-size:12.0pt;
+	font-family:"Noto Serif";
+	color:blue;
+	text-decoration:underline;}
+span.0Text
+	{mso-style-name:"0 Text";
+	color:#3D3B49;}
+span.1Text
+	{mso-style-name:"1 Text";
+	color:blue;
+	text-decoration:underline;}
+span.2Text
+	{mso-style-name:"2 Text";
+	font-style:italic;}
+span.3Text
+	{mso-style-name:"3 Text";
+	color:windowtext;
+	text-decoration:none;}
+span.4Text
+	{mso-style-name:"4 Text";
+	color:blue;
+	font-style:italic;
+	text-decoration:underline;}
+span.5Text
+	{mso-style-name:"5 Text";
+	color:blue;
+	text-decoration:underline;}
+span.6Text
+	{mso-style-name:"6 Text";
+	font-weight:bold;}
+span.7Text
+	{mso-style-name:"7 Text";
+	color:blue;
+	text-decoration:underline;}
+span.8Text
+	{mso-style-name:"8 Text";}
+.MsoChpDefault
+	{font-family:"Calibri",sans-serif;}
+.MsoPapDefault
+	{line-height:115%;}
+@page WordSection1
+	{size:8.5in 11.0in;
+	margin:1.0in 1.0in 1.0in 1.0in;}
+div.WordSection1
+	{page:WordSection1;}
+-->
+</style>
+
+</head>
+
+<body lang=EN-US style='word-wrap:break-word'>
+
+<div class=WordSection1>
+
+<p class=MsoNormal><img width=816 height=1056
+src="What-Are-AI-Agents%20(1)_files/image001.jpg" alt=Cover><br clear=ALL>
+</p>
+
+<div style='border:none windowtext 1.0pt;padding:0in 0in 0in 0in'>
+
+<h1 style='page-break-before:always'><span lang=uk>Зміст</span></h1>
+
+</div>
+
+<p class=MsoNormal><span lang=uk><a href="#What_Are_AI_Agents___The_last_ce_2">Що
+таке агенти ШІ?</a></span></p>
+
+<p class=MsoNormal style='margin-left:24.0pt'><span lang=uk><a
+href="#What_Are_AI_Agents___So__before">Що таке агенти ШІ?</a></span></p>
+
+<p class=MsoNormal style='margin-left:24.0pt'><span lang=uk><a
+href="#How_Do_AI_Agents_Relate_to_LLMs">Як агенти штучного інтелекту ставляться
+до LLM?</a></span></p>
+
+<p class=MsoNormal style='margin-left:24.0pt'><span lang=uk><a
+href="#When_to_Use_AI_Agents__All_right">Коли використовувати агенти AI</a></span></p>
+
+<p class=MsoNormal style='margin-left:48.0pt'><span lang=uk><a
+href="#Document_Question_and_Answer_Age">Агенти із запитань і відповідей на
+документи</a></span></p>
+
+<p class=MsoNormal style='margin-left:48.0pt'><span lang=uk><a
+href="#Chatbot_Agents__Like_their_docum">Агенти чат-ботів</a></span></p>
+
+<p class=MsoNormal style='margin-left:48.0pt'><span lang=uk><a
+href="#Code_Assistant_Agents__Code_assi">Кодові помічники агентів</a></span></p>
+
+<p class=MsoNormal style='margin-left:24.0pt'><span lang=uk><a
+href="#AI_Agent_Tools_and_How_to_Use_Th">Інструменти AI Agent і як ними
+користуватися</a></span></p>
+
+<p class=MsoNormal style='margin-left:48.0pt'><span lang=uk><a
+href="#Document_Q_A_Agents_with_Chainli">Документуйте запитання та відповіді
+агентів за допомогою Chainlit і PandasAI</a></span></p>
+
+<p class=MsoNormal style='margin-left:48.0pt'><span lang=uk><a
+href="#Dynamic_Chatbot_Agents_with_Hugg">Динамічні агенти чат-ботів із
+HuggingFace Chat, Llama 2 і Streamlit</a></span></p>
+
+<p class=MsoNormal style='margin-left:48.0pt'><span lang=uk><a
+href="#Coding_Assistant_Agents_with_Ope">Агенти-помічники кодування з OpenAI
+ChatGPT</a></span></p>
+
+<p class=MsoNormal style='margin-left:24.0pt'><span lang=uk><a
+href="#Moving_Forward_with_AI_Agents__B">Рух вперед з агентами ШІ</a></span></p>
+
+<p class=MsoNormal style='margin-left:48.0pt'><span lang=uk><a
+href="#Augmented_Search__One_of_the_mos">Розширений пошук</a></span></p>
+
+<p class=MsoNormal style='margin-left:48.0pt'><span lang=uk><a
+href="#Product_Integration_and_Isolatio">Інтеграція та ізоляція продукту</a></span></p>
+
+<p class=MsoNormal style='margin-left:48.0pt'><span lang=uk><a
+href="#Infrastructure__Maintaining_AI_a">Інфраструктура</a></span></p>
+
+<p class=MsoNormal style='margin-left:48.0pt'><span lang=uk><a
+href="#Security__Legislation__and_Ethic">Безпека, законодавство та етика</a></span></p>
+
+<p class=MsoNormal style='margin-left:24.0pt'><span lang=uk><a
+href="#Conclusion__While_the_future_of">Висновок</a></span></p>
+
+<div style='border:none windowtext 1.0pt;padding:0in 0in 0in 0in'>
+
+<h1 style='page-break-before:always;page-break-after:avoid'><a
+name="What_Are_AI_Agents___When_and_Ho_2"></a><a
+name="What_Are_AI_Agents___When_and_Ho"></a><a
+name="What_Are_AI_Agents___When_and_Ho_1"><span lang=uk>Що таке агенти ШІ?</span></a></h1>
+
+</div>
+
+<p class=MsoNormal><span lang=uk>Коли і як використовувати агентів LLM</span></p>
+
+<p class=MsoNormal><span lang=uk>Бенджамін Лабашін</span></p>
+
+<div style='border:none windowtext 1.0pt;padding:0in 0in 0in 0in'>
+
+<h1 style='page-break-before:always;page-break-after:avoid'><a
+name="Top_of_copyright_page01_html"></a><a
+name="What_Are_AI_Agents_________by_1"></a><a
+name="What_Are_AI_Agents_________by_2"></a><a
+name="What_Are_AI_Agents_________by"><span lang=uk>Що таке агенти ШІ?</span></a></h1>
+
+</div>
+
+<p class=MsoNormal><span lang=uk>від Бенджаміна Лабащин </span></p>
+
+<p class=MsoNormal><span lang=uk>© O'Reilly Media, Inc., 2024. Усі права
+захищено.</span></p>
+
+<p class=MsoNormal><span lang=uk>Надруковано в Сполучених Штатах Америки.</span></p>
+
+<p class=MsoNormal><span lang=uk>Опубліковано O'Reilly Media, Inc. , 1005
+Gravenstein Highway North, Sebastopol, CA 95472.</span></p>
+
+<p class=MsoNormal><span lang=uk>Книги O'Reilly можна придбати для освітніх,
+ділових або рекламних цілей. Для більшості назв також доступні онлайн-видання (
+<a href="http://oreilly.com"><span class=4Text>http://oreilly.com </span></a>).
+Щоб отримати додаткову інформацію, зв’яжіться з нашим відділом корпоративних/інституційних
+продажів: 800-998-9938 або <span class=2Text>corporate@oreilly.com </span>.</span></p>
+
+<div style='border-top:windowtext 1.0pt;border-bottom:windowtext 1.0pt;
+border-style:none;padding:3.0pt 0in 3.0pt 0in'>
+
+<p class=Para04><span lang=uk>Редактор із придбань: Ніколь Баттерфілд</span></p>
+
+<p class=Para04><span lang=uk> Редактор розробки: Вірджинія Вілсон</span></p>
+
+<p class=Para04><span lang=uk> Редактор виробництва: Кетрін Тозер</span></p>
+
+<p class=Para04><span lang=uk> Редактор: nSight, Inc.</span></p>
+
+<p class=Para04><span lang=uk> Дизайнер інтер'єру: Девід Футато</span></p>
+
+<p class=Para04><span lang=uk> Дизайнер обкладинки: Карен Монтгомері</span></p>
+
+<p class=Para04><span lang=uk> Ілюстратор: Кейт Дуллеа</span></p>
+
+</div>
+
+<p class=Para07><span lang=uk> Листопад 2023: Перше видання</span></p>
+
+<div style='border:none windowtext 1.0pt;padding:0in 0in 0in 0in'>
+
+<p class=Para09><span lang=uk> </span></p>
+
+<h1 style='page-break-after:avoid'><span lang=uk>Історія редакцій для першого
+видання</span></h1>
+
+</div>
+
+<p class=Para07><span lang=uk> 2023-11-15: Перший випуск</span></p>
+
+<p class=MsoNormal><span lang=uk>Логотип O'Reilly є зареєстрованою торговою
+маркою O'Reilly Media, Inc. <span class=2Text>Що таке агенти штучного
+інтелекту? </span>, зображення обкладинки та пов’язаний торговий вигляд є
+торговими марками O’Reilly Media, Inc.</span></p>
+
+<p class=MsoNormal><span lang=uk>Погляди, висловлені в цьому творі, належать
+автору і не відображають погляди видавця. Незважаючи на те, що видавець і автор
+сумлінно доклали зусиль, щоб забезпечити точність інформації та інструкцій, що
+містяться в цьому творі, видавець і автор відмовляються від будь-якої
+відповідальності за помилки або упущення, включаючи, без обмежень,
+відповідальність за збитки, спричинені використанням або опора на цю роботу.
+Використовуйте інформацію та інструкції, що містяться в цій роботі, на власний
+ризик. Якщо будь-які зразки коду чи інші технології, які містить або описує ця
+робота, підпадають під дію ліцензій з відкритим кодом або прав інтелектуальної
+власності інших осіб, ви несете відповідальність за те, щоб їх використання
+вами відповідало таким ліцензіям і/або правам.  </span></p>
+
+<p class=MsoNormal><span lang=uk>978-1-098-15971-9</span></p>
+
+<p class=MsoNormal><span lang=uk>[LSI]</span></p>
+
+<div style='border:none windowtext 1.0pt;padding:0in 0in 0in 0in'>
+
+<h1 style='page-break-before:always;page-break-after:avoid'><a
+name="What_Are_AI_Agents___The_last_ce_2"></a><a name="Top_of_ch01_html"></a><a
+name="What_Are_AI_Agents___The_last_ce_1"></a><a
+name="What_Are_AI_Agents___The_last_ce"><span lang=uk>Що таке агенти ШІ?</span></a></h1>
+
+</div>
+
+<p class=MsoNormal><span lang=uk>Останнє століття в історії обчислювальної
+техніки мало багато помітних віх: винахід комп’ютера; розвиток персонального
+комп'ютера, яким ми його знаємо; інтернет; смартфон; машинне навчання; і хмарні
+обчислення. Кожні кілька десятиліть здається, що суспільства рухаються вперед,
+осідлавши хвилю нових обчислювальних інновацій. Якщо ви читаєте це, то вітаю
+(чи вибачте?), ви живете під час ще однієї з цих віх у розвитку обчислювальної
+техніки.</span></p>
+
+<p class=MsoNormal><span lang=uk>Агенти штучного інтелекту (ШІ), що базуються
+на великих мовних моделях (LLM) і даних користувача, які вони надають,
+з’явилися в останні роки як нові потужні інструменти в обчислювальному
+репертуарі людства. Але що таке агенти ШІ? І як ми можемо бути настільки
+впевненими, що агенти штучного інтелекту матимуть такий вплив? Читачі цього
+звіту не тільки дізнаються відповіді на ці запитання, але й дізнаються про те, <span
+class=2Text>коли </span>використовувати агенти штучного інтелекту, і, що
+важливо, <span class=2Text>як </span>почати!</span></p>
+
+<div style='border:none windowtext 1.0pt;padding:0in 0in 0in 0in'>
+
+<h1 style='page-break-after:avoid'><a name="What_Are_AI_Agents___So__before"><span
+lang=uk>Що таке агенти ШІ?</span></a></h1>
+
+</div>
+
+<p class=MsoNormal><span lang=uk>Отже, перш ніж ми зайдемо вперед, що саме таке
+агенти штучного інтелекту і чому ви повинні хотіти дізнатися про них у першу
+чергу? Агенти штучного інтелекту – це інструменти, розроблені для того, щоб
+дозволити користувачам взаємодіяти з LLM для досягнення більш продуктивного або
+творчого робочого процесу якомога плавніше. До появи агентів штучного інтелекту
+користувачі були б змушені створювати власні статистичні мовні моделі — це трудомістке,
+технічне та дороге завдання! Тепер, за допомогою агентів штучного інтелекту,
+користувачі, які хочуть взаємодіяти зі штучним інтелектом, просто можуть увійти
+в інтерфейс і вести бізнес, починаючи від запитань щодо своїх документів і
+закінчуючи отриманням допомоги з домашнім завданням.</span></p>
+
+<p class=MsoNormal><span lang=uk>На більш детальному рівні ви можете думати про
+агентів ШІ як про «обгортку» інтерфейсу користувача навколо моделей, які їх
+використовують. Тобто агенти штучного інтелекту часто є зручними для
+користувача «інтерфейсами», які полегшують використання моделей, які їх
+живлять, часто шляхом фокусування та обмеження того, як <span class=2Text>користувачі
+</span>взаємодіють із моделлю. Візьмемо, наприклад, ChatGPT. Моделі, що
+підживлюють ChatGPT (GPT-3.5 Turbo або GPT-4), надзвичайно складні, потужні, і їх
+важко використовувати та працювати самостійно. Як агент AI, ChatGPT абстрагує
+технічні характеристики цих моделей і дозволяє користувачам взаємодіяти з ними
+просто за допомогою тексту.</span></p>
+
+<div style='border:none windowtext 1.0pt;padding:0in 0in 0in 0in'>
+
+<h1 style='page-break-after:avoid'><a name="How_Do_AI_Agents_Relate_to_LLMs"><span
+lang=uk>Як агенти штучного інтелекту ставляться до LLM?</span></a></h1>
+
+</div>
+
+<p class=MsoNormal><span lang=uk>Гаразд, але що це за складні «LLM», про які ми
+говоримо? LLM — це мозок операції — «ШІ» в агентах ШІ. Ці моделі навчені
+екстраполювати та інтерпретувати текст природною мовою в контексті, який ви їм
+надаєте. Хтось краще розбирається в математиці, хтось кращий в жартах або розмовляє
+іспанською мовою, а хтось – загальний. Таким чином, ви можете сприймати агентів
+штучного інтелекту як автомобілі, тоді як моделі, які їх використовують, можна
+вважати їх двигунами. Як так? Давайте розберемо це.</span></p>
+
+<p class=MsoNormal><span lang=uk>Ми всі знаємо, що автомобілі не можуть
+рухатися вперед без двигуна, і ми також знаємо, що деякі двигуни розроблені для
+конкретних випадків використання , наприклад, двигуни квадроциклів проти
+двигунів шкільних автобусів. Як і автомобілі, агенти штучного інтелекту не
+можуть функціонувати без базових двигунів LLM. Як і автомобілі, деякі агенти
+штучного інтелекту часто краще працюють із певними «двигунами», які краще
+відповідають їхнім цілям. Наприклад, можливо, агент штучного інтелекту
+допомагає вам писати код, наприклад GitHub Copilot. Тож було б непогано, якби
+агент, який ви використовуєте — засіб, за допомогою якого ви взаємодієте з
+моделлю, щоб підвищити продуктивність — працював би LLM, створеним для
+підтримки коду. І справді, це саме те, що роблять інженери машинного навчання,
+які створюють ці моделі: вони створюють механізми, які відповідають меті.</span></p>
+
+<p class=MsoNormal><span lang=uk>Зрештою, це те, що вам потрібно знати про LLM
+та їхні стосунки з агентами ШІ: як і водінню автомобіля, користувачам агентів
+ШІ не потрібно розуміти, <span class=2Text>як </span>працює двигун автомобіля,
+щоб керувати ним. Водіям просто необхідно знати, як користуватися автомобілем.
+Подібним чином найкращі агенти штучного інтелекту інтуїтивно зрозумілі,
+ефективні для свого випадку використання (наприклад, допомога з написанням
+коду) і мають відповідні LLM, що працюють як механізм для їхніх користувачів.</span></p>
+
+<p class=MsoNormal><span lang=uk>Фактично, саме тому останнім часом був такий
+поштовх до створення агентів ШІ. Ділові люди, інженери з машинного навчання та
+дослідники штучного інтелекту розуміють, що для того, щоб їхні магістратури
+стали повсюдними та корисними для людства, потрібно розробити агенти штучного
+інтелекту, щоб користувачі могли ними користуватися.</span></p>
+
+<div style='border:none windowtext 1.0pt;padding:0in 0in 0in 0in'>
+
+<h1 style='page-break-after:avoid'><a name="When_to_Use_AI_Agents__All_right"><span
+lang=uk>Коли використовувати агенти AI</span></a></h1>
+
+</div>
+
+<p class=MsoNormal><span lang=uk>Гаразд, тепер ви маєте загальне уявлення про
+те, що таке агенти штучного інтелекту, але ви все ще думаєте, коли їх слід
+використовувати та для яких завдань вони корисні. Хоча майже щодня з’являються
+нові агенти штучного інтелекту та випадки використання, ось кілька поширених
+ситуацій, у яких ви можете почати використовувати агенти штучного інтелекту.</span></p>
+
+<div style='border:none windowtext 1.0pt;padding:0in 0in 0in 0in'>
+
+<h2 style='page-break-after:avoid'><a name="Document_Question_and_Answer_Age"><span
+lang=uk>Агенти із запитань і відповідей на документи</span></a></h2>
+
+</div>
+
+<p class=MsoNormal><span lang=uk>Агенти запитань і відповідей на документи – це
+інструменти з підтримкою штучного інтелекту, розроблені для вирішення проблеми
+надлишку інформації. За допомогою агента запитань і відповідей на документи
+користувачі можуть просто задавати питання своїм документам і отримувати
+відповіді про те, що саме вони містять, не вдаючись до потенційно трудомістких
+зусиль пошуку в них вручну. Якщо це звучить занадто абстрактно, це нормально!
+Давайте разом розберемо варіант використання.</span></p>
+
+<p class=MsoNormal><span lang=uk>Уявіть, що вас щойно взяли на роботу в Very
+Fake Company, Inc. Це ваш перший день. Коли ви сідаєте за свій стіл, щоб
+розпочати свій день, ваш менеджер підходить до вас, кидає на ваш стіл
+величезний стос документів і каже: «Відділ кадрів не працює, і я надто
+зайнятий, щоб допомогти вам. Ось усі вступні документи, які вам знадобляться,
+щоб зрозуміти, як працювати тут, у Very Fake Company, Inc. Насолоджуйтесь!» Ви <span
+class=2Text>можете </span>почати читати всі ці документи, але, чесно кажучи, це
+звучить як трудомістке завдання. Не кажучи вже про те, що це не ваше перше
+родео: ви знаєте, що багато інформації (наприклад, «що таке електронна пошта»)
+не буде вам корисним.</span></p>
+
+<p class=MsoNormal><span lang=uk>У такій ситуації агент із запитань і
+відповідей на документи може значно полегшити ваше життя. Агенти із запитань і відповідей
+на документи приймають документи, наприклад документи, які ви отримали в перший
+день, і зберігають їх у пам’яті. Але вони роблять більше, ніж <span
+class=2Text>зберігають </span>інформацію; вони також можуть консолідувати та
+передавати відповідну інформацію своїм користувачам через інтерфейс природної
+мови. Все, що вам потрібно зробити, це поставити запитання своєму агенту із
+запитань і відповідей на документи, і він поверне запитувану інформацію, як ви
+можете бачити в цьому прикладі взаємодії:</span></p>
+
+<p class=Para01><span lang=uk>Користувач: Привіт, чи можете ви допомогти мені
+консолідувати інформацію про вступ, яку я отримав у перший день у Very Fake
+Company, Inc.?</span></p>
+
+<p class=Para01><span lang=uk>Питання та відповіді на документи Агент:
+Звичайно! Просто надайте мені зміст документів, і я вам допоможу.</span></p>
+
+<p class=Para01><span lang=uk>&lt;завантажує стос вступних документів&gt;</span></p>
+
+<p class=Para01><span lang=uk>Питання та відповіді на документи Агент:
+документи отримано. Будь ласка, дайте мені хвилину, щоб обробити їх... Готово!
+Ви можете поставити запитання щодо цих документів вже зараз.</span></p>
+
+<p class=Para01><span lang=uk>Користувач: Будь ласка, узагальніть для мене всю
+важливу інформацію, яка мені потрібна, щоб розпочати свій перший день у Very
+Fake Company, Inc.</span></p>
+
+<p class=Para01><span lang=uk>Питання та відповіді на документи Агент:
+Абсолютно! Ось стислий виклад основних деталей:</span></p>
+
+<p class=Para01><span lang=uk>Цінності компанії: у VFC Inc. ми надаємо
+пріоритет чесності, командній роботі, інноваціям і задоволенню клієнтів.</span></p>
+
+<p class=Para01><span lang=uk>Графік роботи: понеділок – п’ятниця, 9:00 –
+17:00. Ви повинні щодня входити в нашу систему обліку робочого часу.</span></p>
+
+<p class=Para01><span lang=uk>Дрес-код: повсякденний, але презентабельний.
+П’ятниця – це дні корпоративного одягу.</span></p>
+
+<p class=Para01><span lang=uk>ІТ-інформація та дані для входу: електронна
+адреса вашої компанії john.doe@vfcinc.com. Щоб отримати доступ до редактора
+коду Very Fake Company, Inc, необхідного для виконання вашої роботи, вам
+потрібно буде звернутися до Дженіс Сміт у відділі ІТ.</span></p>
+
+<p class=Para01><span lang=uk>Деталі кадрової служби: з будь-якими запитаннями,
+пов’язаними з кадровою службою, зв’яжіться з Еммою за номером 123. Не забувайте
+заповнити форми свого медичного страхування та контактні форми для екстрених
+випадків до кінця тижня.</span></p>
+
+<p class=Para01><span lang=uk>Паркування: Вам призначено місце №45. Не забудьте
+показати свій паркувальний талон.</span></p>
+
+<p class=Para01><span lang=uk>Події компанії: цієї п’ятниці о 18:00 у лаунжі
+відбудеться вітальний міксер. Це чудова можливість зустрітися з колегами.</span></p>
+
+<p class=Para01><span lang=uk>Перші завдання: протягом першого тижня ваш
+керівник хотів би, щоб ви переклали застарілий код, написаний мовою
+програмування python, на мову програмування Java.</span></p>
+
+<p class=Para01><span lang=uk>Бажаєте отримати детальнішу інформацію щодо
+будь-якої з цих тем?</span></p>
+
+<p class=Para01><span lang=uk>Користувач: Це ідеально, дякую! Я звернуся, якщо
+у мене виникнуть додаткові запитання .</span></p>
+
+<p class=Para08><span lang=uk>Питання та відповіді на документи Агент: Ні за
+що! Гарного вам першого дня в Very Fake Company, Inc. Дайте мені знати, якщо
+вам знадобиться ще щось. <a name=1></a><a
+href="#1_Written_with_text_generated_by"><span class=5Text><span
+style='font-size:9.0pt'>1</span></span></a></span></p>
+
+<p class=MsoNormal><span lang=uk>Якщо вам коли-небудь бракує часу і вам
+потрібно переварити багато інформації, агенти із запитань і відповідей на документи
+можуть стати для вас інструментом.</span></p>
+
+<div style='border:none windowtext 1.0pt;padding:0in 0in 0in 0in'>
+
+<h2 style='page-break-after:avoid'><a name="Chatbot_Agents__Like_their_docum"><span
+lang=uk>Агенти чат-ботів</span></a></h2>
+
+</div>
+
+<p class=MsoNormal><span lang=uk>Подібно до аналогів із запитаннями та
+відповідями в документах, агенти чат-ботів здатні отримувати вхідні дані
+природною мовою та відповідати відповідним результатом. Проте, на відміну від
+агентів запитань і відповідей на документах, агенти чат-ботів набагато
+динамічніші у своїх можливостях. У той час як центром запитань і відповідей
+агентів документів є запитання та відповіді з вихідного матеріалу, який <span
+class=2Text>ви </span>їм надаєте, агенти чат-ботів отримують «підказки»
+завчасно, ще до того, як їхні користувачі почнуть з ними взаємодіяти. Підказки
+– це саме те, що вони звучать: інструкції, яких агенти «запрошуються»
+виконувати в будь-який час, коли вони допомагають користувачам.</span></p>
+
+<p class=MsoNormal><span lang=uk>Давайте продовжимо сценарій Very Fake Company,
+щоб розглянути приклад використання агента чат-бота. Уявіть, що ви закінчили
+отримувати всю необхідну інформацію першого дня від агента запитань і
+відповідей на документи. У рамках важливої інформації, яку вам передає агент
+запитань і відповідей, ви повинні зв’язатися з ІТ, щоб активувати власне
+програмне забезпечення редактора коду Very Fake Company. Але коли ви підходите
+до ІТ, вони кажуть, що вони <span class=2Text>теж </span>забиті й не можуть вам
+допомогти. Натомість вони попросили вас зв’язатися з їхнім агентом ІТ-чат-бота
+BERTA: Bother Energetic Robot To Activate. Виявилося, що ІТ увійшли в гру
+агентів ШІ та створили BERTA як ШІ для автоматичної активації програмного
+забезпечення компанії для користувачів. IT написав такий запит для BERTA:</span></p>
+
+<p class=Para01><span lang=uk>Користувач: Ви агент чат-бота. Ваше ім'я БЕРТА:
+турбуйте енергійного робота про активацію. Ваша єдина мета — допомогти
+користувачам Very Fake Company, Inc. Ваша головна роль — отримати інформацію
+електронної пошти користувачів, підтвердити, що вони є співробітниками
+компанії, а потім перевірити, чи мають вони право використовувати наше власне
+програмне забезпечення для редагування коду, перевіривши внутрішня база даних,
+до якої вам надано доступ. Якщо користувачеві дозволено доступ до програмного
+забезпечення для кодування, ви повинні активувати його дозвіл у базі даних і
+надіслати йому ключ, потрібний для початку. Якщо їм заборонено, скажіть їм
+надіслати Джаніс Сміт електронною поштою на janice.smith@vfcinc.com .</span></p>
+
+<p class=Para08><span lang=uk>БЕРТА: Чудово! Я обов’язково виконуватиму ці
+вказівки.</span></p>
+
+<p class=MsoNormal><span lang=uk>BERTA отримала вказівку дотримуватися вказівок
+перед тим, як спілкуватися з користувачами. Отже, як працівник Very Fake
+Company, Inc., коли ви входите в програмне забезпечення BERTA та вказуєте свою
+електронну адресу, BERTA вже точно знатиме, як з вами взаємодіяти, дотримуючись
+параметрів, спочатку встановлених ІТ-спеціалістами.</span></p>
+
+<p class=MsoNormal><span lang=uk>Агенти чат-ботів особливо переконливі у
+випадках, коли корисним є підключення до сторонніх систем, таких як бази даних
+та Інтернет. Це робить агентів чат-ботів потенційно набагато потужнішими, ніж
+агенти запитань і відповідей, завдяки ширшому спектру можливостей продуктів,
+які вони надають. На відміну від крихких, неагентних чат-ботів минулого, агенти
+чат-ботів також більш здатні взаємодіяти з користувачами динамічніше та
+потенційно більш інклюзивно. Агентам чат-ботів можна запропонувати спілкуватися
+кількома мовами, справлятися з нав’язливими користувачами та точно відповідати
+на запитання, які їм задають користувачі. До них також можна отримати доступ
+24/7, що дозволяє покращити відгуки користувачів.</span></p>
+
+<p class=MsoNormal><span lang=uk>Зрештою, агенти чат-ботів підходять для
+будь-якої ситуації, коли користувачі шукають інформацію, яка не може бути
+зведена до вихідного матеріалу, як-от вступні документи. Агенти чат-ботів також
+є чудовим вибором, коли компанії очікують, що до них звертатимуться частіше та
+у більшій кількості, ніж вони могли б впоратися за інших умов.</span></p>
+
+<div style='border:none windowtext 1.0pt;padding:0in 0in 0in 0in'>
+
+<h2 style='page-break-after:avoid'><a name="Code_Assistant_Agents__Code_assi"><span
+lang=uk>Кодові помічники агентів</span></a></h2>
+
+</div>
+
+<p class=MsoNormal><span lang=uk>Агенти-помічники коду — це агенти штучного
+інтелекту, які підживлюються моделями, спеціально розробленими, щоб допомогти
+таким користувачам, як ви, писати код продуктивніше й ефективніше. До
+популярних агентів-помічників коду належать GitHub Copilot, Amazon
+CodeWhisperer і StarCoder від Hugging Face. Агенти помічника коду — це
+інструменти, розроблені для редагування коду, повного помилок, автозавершення
+простих функцій для поширених проблем кодування або створення шаблонів для
+складніших проблем кодування. Тоді як у зовсім недавньому минулому інженери
+програмного забезпечення та розробники могли вдаватися до пошукових систем,
+чатів або колег для вирішення своїх проблем, агенти-помічники коду зменшують
+потребу у такому дорогому перемиканні контексту, дозволяючи значно підвищити
+продуктивність.</span></p>
+
+<p class=MsoNormal><span lang=uk>Уявіть, що ваш бос у Very Fake Company, Inc.
+просить вас перекласти застарілий код із Python на Java. Проблема в тому, що
+хоча ви знаєте Python, ви не настільки знайомі з Java. На щастя, коли ви
+входите в редактор коду Very Fake Company, Inc., ви бачите, що він оснащений
+агентом-помічником коду. Під час входу в репозиторій, який містить застарілий
+код Python, який вам було наказано змінити, ви побачите функцію Python, яка
+перетворює маркетингову копію з нижнього регістру на всі прописні:</span></p>
+
+<div style='border:none windowtext 1.0pt;padding:9.0pt .25in 9.0pt .25in;
+background:#EEF2F6'>
+
+<p class=Para10><span lang=uk> <br>
+def convert_marketing_copy(text: str) -&gt; str: <br>
+&quot;&quot;&quot;Ця функція бере маркетинговий текст і перетворює його весь у <br>
+верхній регістр.&quot;&quot;&quot; <br>
+return text.upper()<br>
+ <br>
+&gt;&gt;&gt; convert_marketing_copy(&quot;Я люблю Very Fake Company,
+Inc.&quot;) <br>
+&quot;Я ЛЮБЛЮ ДУЖЕ FAKE COMPANY, Inc.&quot;<br>
+<br>
+</span></p>
+
+</div>
+
+<p class=MsoNormal><span lang=uk>Тепер ви <span class=2Text>можете </span>шукати
+ресурси Java в Інтернеті, читати про Java і повільно писати функцію самостійно,
+або ви можете доручити агенту-помічнику коду написати функцію для вас. Ви
+обираєте останнє. У своєму редакторі ви підключаєтеся до агента помічника коду
+та записуєте початок наступного коду, який відображається чорним. Агент
+помічника коду, вбудований у ваш текстовий редактор, збирає все, що ви пишете,
+і обробляє введені дані в реальному часі, як перевірка орфографії. Він пропонує
+вам функцію автозаповнення синім кольором. Натиснувши Tab, ваш агент-помічник
+коду надасть вам повністю завершену функцію коду Java, і все, що вам потрібно
+зробити, це просто встановити проблему та описати те, що ви хочете: <a name=2></a><a
+href="#2_Text_generated_by_OpenAI_s_Cha"><span class=5Text><span
+style='font-size:9.0pt'>2</span></span></a></span></p>
+
+<div style='border:none windowtext 1.0pt;padding:9.0pt .25in 9.0pt .25in;
+background:#EEF2F6'>
+
+<p class=Para11><span class=0Text><span lang=uk>публічний клас MarketingCopyConverter
+{<br>
+ <br>
+// Функція доповнена програмним забезпеченням автозавершення коду <br>
+/** <br>
+* Ця функція бере маркетинговий текст і перетворює його весь у <br>
+* верхній регістр. <br>
+* Наприклад, текст &quot;I love Very Fake Company, Inc.&quot; <br>
+* перетворюється у функції convertMarketingCopy(). <br>
+* @param text Маркетинговий текст, який потрібно перетворити. <br>
+* @return Перетворений рядок у верхньому регістрі. <br>
+*/<br>
+    <br>
+      <br>
+</span></span><span lang=uk>public static String convertMarketingCopy(String
+text) { <br>
+return text.toUpperCase(); <br>
+} <br>
+public static void main(String[] args) { <br>
+// Головний метод, доповнений програмою автозаповнення коду <br>
+String result = convertMarketingCopy( <br>
+&quot;I love Very Fake Company, Inc.&quot;);<br>
+      <br>
+System.out.println(результат); <br>
+// Вихід: Я ЛЮБЛЮ ДУЖЕ FAKE COMPANY, INC. <br>
+} <br>
+}<br>
+<br>
+</span></p>
+
+</div>
+
+<p class=MsoNormal><span lang=uk>Агенти-помічники коду дозволяють програмістам
+виконувати свою роботу швидше та ефективніше. Але вони не позбавлені своїх
+витрат. Як і всі агенти штучного інтелекту, агенти-помічники коду є
+інструментами, і, як і з будь-яким інструментом, ви повинні знати, коли і як
+ними користуватися. Інструменти помічника коду можуть легко генерувати
+неправильні або хибні результати, які можуть спричинити проблеми. Під час
+використання агентів-помічників коду або будь-якого іншого агента важливо
+перевірити їхні результати під наглядом людини та, зрештою, переконатися, що
+вони є інструментами, які працюють на вас, а не навпаки. Найкращий спосіб
+досягти цього — зрозуміти, <span class=2Text>як </span>користуватися цими
+інструментами.</span></p>
+
+<div style='border:none windowtext 1.0pt;padding:0in 0in 0in 0in'>
+
+<h1 style='page-break-after:avoid'><a name="AI_Agent_Tools_and_How_to_Use_Th"><span
+lang=uk>Інструменти AI Agent і як ними користуватися</span></a></h1>
+
+</div>
+
+<p class=MsoNormal><span lang=uk>Досі ви читали про використання агентів ШІ в
+реалістичних, але уявних сценаріях. Хоча це корисно як навчальний пристрій, це
+може змусити вас повірити, що агенти штучного інтелекту є абстрактними
+інструментами майбутнього, а не сьогоднішнього дня. Але ніщо не може бути дальшим
+від істини. Агенти штучного інтелекту — це <span class=2Text>справжні </span>інструменти,
+якими щодня користуються мільйони людей. І хоча демонстрація всіх доступних
+сьогодні агентів штучного інтелекту займе надто багато часу, наступні реальні
+програмні рішення агентів штучного інтелекту відповідають інструментам у
+сценаріях, представлених раніше.</span></p>
+
+<div style='border:none windowtext 1.0pt;padding:0in 0in 0in 0in'>
+
+<h2 style='page-break-after:avoid'><a name="Document_Q_A_Agents_with_Chainli"><span
+lang=uk>Документуйте запитання та відповіді агентів за допомогою Chainlit і
+PandasAI</span></a></h2>
+
+</div>
+
+<p class=MsoNormal><span lang=uk>Як ми вже обговорювали, агенти запитань і
+відповідей на документи особливо корисні, коли ви хочете запитати власні
+документи, щоб узагальнити або витягти відповідну інформацію. Один із
+популярних агентських інструментів для ввімкнення цієї функції називається
+Chainlit. Концепція Chainlit проста: користувачі надають інформацію через
+інтерфейс користувача з підтримкою Chainlit. Після того, як дані буде оброблено
+основним LLM, агент буде готовий відповісти на реальні запитання таких
+користувачів, як ви, щодо даних, які він надав. У цьому випадку я використав
+інструмент під назвою PandasAI для обробки даних, який підживлює LLM під
+капотом, але ви могли легко замінити його на інше програмне рішення.</span></p>
+
+<p class=MsoNormal><span lang=uk>Цей процес показано на <a
+href="#Figure_1__Initial_prompt_asking"><span class=1Text>рисунку 1 </span></a>.
+Коли ви входите в Chainlit, ваш агент запропонує вам надати йому дані. Я надав
+агенту файл із інформацією про популярні книги з інформатики.</span></p>
+
+<div style='border:none windowtext 1.0pt;padding:0in 0in 0in 0in'>
+
+<p class=Para05><a name="Figure_1__Initial_prompt_asking"><span lang=uk><img
+border=0 width=624 height=437 id="waaa_0101.png"
+src="What-Are-AI-Agents%20(1)_files/image002.jpg" alt="waaa_0101.png"></span></a><span
+lang=uk> </span></p>
+
+</div>
+
+<div style='border:none windowtext 1.0pt;padding:4.0pt 0in 0in 0in'>
+
+<h3><span lang=uk>Малюнок 1. Початкове повідомлення із запитом документів <a
+name=3></a><a href="#3__Document_Question_Answering"><span class=7Text><span
+style='font-size:7.0pt'>3</span></span></a></span></h3>
+
+</div>
+
+<p class=MsoNormal><span lang=uk>Як показано на <a
+href="#Figure_2__Provided_documents__ag"><span class=1Text>малюнку 2 </span></a>,
+агент легко отримує інформацію та повертає імена стовпців у файлі.</span></p>
+
+<div style='border:none windowtext 1.0pt;padding:0in 0in 0in 0in'>
+
+<p class=Para05><a name="Figure_2__Provided_documents__ag"><span lang=uk><img
+border=0 width=460 height=864 id="waaa_0102.png"
+src="What-Are-AI-Agents%20(1)_files/image003.jpg" alt="waaa_0102.png"></span></a><span
+lang=uk> </span></p>
+
+</div>
+
+<div style='border:none windowtext 1.0pt;padding:4.0pt 0in 0in 0in'>
+
+<h3><span lang=uk>Рисунок 2. Надані документи, агент відповідає на запитання <a
+name=4></a><a href="#4_Text_generated_by_Chainlit_and"><span class=7Text><span
+style='font-size:7.0pt'>4</span></span></a></span></h3>
+
+</div>
+
+<p class=MsoNormal><span lang=uk>Потім ви можете зв’язатися з агентом,
+попросивши в нього інформацію про назви, пов’язані з наукою про дані та
+машинним навчанням. Агент передає текст PandasAI, який використовує LLM, щоб
+відповісти на правильні маніпуляції, необхідні для наших даних. Отримана відповідь
+правильна: вам надано список книг про машинне навчання та науку про дані.</span></p>
+
+<p class=MsoNormal><span lang=uk>І якщо цього недостатньо, ви можете
+продовжувати натискати на агента для отримання більш відповідної інформації, як
+показано на <a href="#Figure_3__Exploring_data_by_filt"><span class=1Text>малюнку
+3 </span></a>, де ви можете обмежити дані одним видавцем, O'Reilly Media.</span></p>
+
+<div style='border:none windowtext 1.0pt;padding:0in 0in 0in 0in'>
+
+<p class=Para05><a name="Figure_3__Exploring_data_by_filt"><span lang=uk><img
+border=0 width=427 height=864 id="waaa_0103.png"
+src="What-Are-AI-Agents%20(1)_files/image004.jpg" alt="waaa_0103.png"></span></a><span
+lang=uk> </span></p>
+
+</div>
+
+<div style='border:none windowtext 1.0pt;padding:4.0pt 0in 0in 0in'>
+
+<h3><span lang=uk>Малюнок 3. Дослідження даних шляхом фільтрації інформації до
+O'Reilly <a name=5></a><a href="#5_Text_generated_by_Chainlit_and"><span
+class=7Text><span style='font-size:7.0pt'>5</span></span></a></span></h3>
+
+</div>
+
+<p class=MsoNormal><span lang=uk>Якщо вам цікаво дізнатися, як реалізувати цей
+код самостійно, ви можете ознайомитися з кодом для цього прикладу <a
+href="https://github.com/EconoBen/what_is_an_ai_agent"><span class=1Text>тут </span></a>або
+ознайомитися з <a
+href="https://www.oreilly.com/library/view/hands-on-large-language/9781098150952/"><span
+class=1Text>практичними моделями великих мов </span></a>Джея Аламмара та
+Мартена Гроотендорста (О'Райлі).</span></p>
+
+<div style='border:none windowtext 1.0pt;padding:0in 0in 0in 0in'>
+
+<h2 style='page-break-after:avoid'><a name="Dynamic_Chatbot_Agents_with_Hugg"><span
+lang=uk>Динамічні агенти чат-ботів із HuggingFace Chat, Llama 2 і Streamlit</span></a></h2>
+
+</div>
+
+<p class=MsoNormal><span lang=uk>Сьогодні на ринку є багато чат-ботів
+загального призначення, зокрема ChatGPT від OpenAI і Claude від Anthropic. Але
+є також агенти чат-ботів, що працюють на базі LLM з відкритим кодом, наприклад
+LLaMa 2 від Meta, який використовується на <a
+href="#Figure_4__Chatbot_Agent__Hugging"><span class=1Text>малюнку 4 </span></a>.</span></p>
+
+<p class=MsoNormal><span lang=uk>Агенти чат-ботів, як правило, мають загальний
+інтерфейс користувача. По-перше, це персонаж «помічника», представлений жовтим
+значком на <a href="#Figure_4__Chatbot_Agent__Hugging"><span class=1Text>малюнку
+4 </span></a>. Ця особа грається агентом чат-бота. Помічники зазвичай починають
+усі нові взаємодії зі своїми користувачами, запитуючи, як вони можуть їм
+допомогти. У випадку чат-бота на <a href="#Figure_4__Chatbot_Agent__Hugging"><span
+class=1Text>малюнку 4 персонаж </span></a>-помічник запитує вас, читача
+O'Reilly, про що ви хотіли б поговорити. Друга особа – це особа «користувача»,
+представлена червоною піктограмою. Користувачі можуть продовжувати, вводячи
+майже будь-які запитання чи коментарі до помічника — можливості настільки ж
+необмежені, як і будь-яка розмова з людиною.</span></p>
+
+<div style='border:none windowtext 1.0pt;padding:0in 0in 0in 0in'>
+
+<p class=Para05><a name="Figure_4__Chatbot_Agent__Hugging"><span lang=uk><img
+border=0 width=519 height=864 id="waaa_0104.png"
+src="What-Are-AI-Agents%20(1)_files/image005.jpg" alt=" "></span></a><span
+lang=uk> </span></p>
+
+</div>
+
+<div style='border:none windowtext 1.0pt;padding:4.0pt 0in 0in 0in'>
+
+<h3><span lang=uk>Рисунок 4. Агент чат-боту, HuggingFace і LLaMa 2, приклад <a
+name=6></a><a href="#6_Text_generated_by_HuggingFace"><span class=7Text><span
+style='font-size:7.0pt'>6</span></span></a></span></h3>
+
+</div>
+
+<p class=MsoNormal><span lang=uk>Але якщо ви шукаєте максимально корисні
+відповіді від агента чат-бота, тоді найкраще бути якомога відвертішим у своїх
+словах. Наприклад, у демонстрації чат-бота <a
+href="#Figure_4__Chatbot_Agent__Hugging"><span class=1Text>на малюнку 4 </span></a>агенту
+точно пояснюється роль, яку він має виконувати — «агент чат-бота з підтримкою
+штучного інтелекту» — і що він має продемонструвати свої можливості, пояснивши,
+чому LLM такі потужні. Ясно викладаючи надані інструкції, агент може
+структурувати свою відповідь у більш корисний результат. Якщо ви хочете
+дізнатися, як був створений цей агент, дивіться більше <a
+href="https://github.com/EconoBen/what_is_an_ai_agent"><span class=1Text>на
+GitHub </span></a>.</span></p>
+
+<div style='border:none windowtext 1.0pt;padding:0in 0in 0in 0in'>
+
+<h2 style='page-break-after:avoid'><a name="Coding_Assistant_Agents_with_Ope"><span
+lang=uk>Агенти-помічники кодування з OpenAI ChatGPT</span></a></h2>
+
+</div>
+
+<p class=MsoNormal><span lang=uk>Замість того, щоб створювати власний
+агент-помічник кодування, цього разу давайте скористаємося готовим агентом із
+ChatGPT OpenAI. Щоб скористатися цим агентом, вам доведеться зареєструватися в
+ChatGPT Plus, який на момент написання цієї статті коштує близько 20 доларів
+США на місяць. Ви, мабуть, пам’ятаєте раніше, що агент помічника кодування — це
+агент штучного інтелекту, який спеціально розроблений для допомоги користувачам
+у вирішенні технічних проблем, таких як переклад коду з Python на Java. Але агенти-помічники
+коду можуть робити більше, ніж просто інтерпретувати код; вони навіть можуть
+брати дані, які ви їм надали, і створювати інтерпретовані діаграми для
+користувачів. Давайте подивимось як.</span></p>
+
+<p class=MsoNormal><span lang=uk>На <a href="#Figure_5__Accessing_ChatGPT_for"><span
+class=1Text>малюнку 5 </span></a>ви починаєте свою взаємодію з агентом у тому,
+що, ймовірно, стало знайомим виглядом. У нижній частині екрана є текстове поле,
+у якому ви можете взаємодіяти з агентом ChatGPT, а решта екрана порожня —
+зарезервована для історії чату користувача-помічника. У верхній частині екрана
+ви можете вибрати між найдосконалішим LLM OpenAI, орієнтованим на користувача
+(GPT-4), і його дешевшим, але швидшим LLM (GPT-3.5). Після того, як ви вибрали
+бажаний ступінь LLM, тепер ви можете надіслати дані, перетягнувши файли в
+текстове поле або натиснувши значок скріпки, який з’явиться в текстовому полі
+на вашому екрані.</span></p>
+
+<div style='border:none windowtext 1.0pt;padding:0in 0in 0in 0in'>
+
+<p class=Para05><a name="Figure_5__Accessing_ChatGPT_for"><span lang=uk><img
+border=0 width=421 height=864 id="waaa_0105.png"
+src="What-Are-AI-Agents%20(1)_files/image006.jpg" alt="waaa_0105.png"></span></a><span
+lang=uk> </span></p>
+
+</div>
+
+<div style='border:none windowtext 1.0pt;padding:4.0pt 0in 0in 0in'>
+
+<h3><span lang=uk>Рисунок 5. Доступ до ChatGPT для допомоги в кодуванні <a
+name=7></a><a href="#7_Text_generated_by_OpenAI_s_Cha"><span class=7Text><span
+style='font-size:7.0pt'>7</span></span></a></span></h3>
+
+</div>
+
+<p class=MsoNormal><span lang=uk>На <a href="#Figure_6__Providing_a_data_file"><span
+class=1Text>малюнку 6 </span></a>використовуються ті самі дані книги, що й у
+прикладі агента запитань і відповідей. Однак цього разу агента кодового
+помічника просять інтерпретувати надані ним дані та вивести діаграму, яка
+підсумовує, скільки сторінок на рік книги O'Reilly містять у зразках даних. Ви
+навіть можете зайти так далеко, щоб наказати стилізувати діаграму відповідно до
+естетичних порад, які дав американський статистик Едвард Тафт. Агент знайомий з
+Тафтом, і йому не важко прийняти цю інструкцію та виконати її.</span></p>
+
+<div style='border:none windowtext 1.0pt;padding:0in 0in 0in 0in'>
+
+<p class=Para05><a name="Figure_6__Providing_a_data_file"><span lang=uk><img
+border=0 width=624 height=703 id="waaa_0106.png"
+src="What-Are-AI-Agents%20(1)_files/image007.jpg" alt="waaa_0106.png"></span></a><span
+lang=uk> </span></p>
+
+</div>
+
+<div style='border:none windowtext 1.0pt;padding:4.0pt 0in 0in 0in'>
+
+<h3><span lang=uk>Малюнок 6. Надання файлу даних із інструкціями щодо діаграми <a
+name=8></a><a href="#8_Text_generated_by_OpenAI_s_Cha"><span class=7Text><span
+style='font-size:7.0pt'>8</span></span></a></span></h3>
+
+</div>
+
+<p class=MsoNormal><span lang=uk>Ви можете побачити результати цієї взаємодії
+на <a href="#Figure_7__Chart_output_by_agent"><span class=1Text>малюнку 7 </span></a>.
+Агент-помічник коду ChatGPT має дуже мало проблем із читанням цілого файлу
+даних і створенням абсолютно нової, точної гістограми, дотримуючись його
+вказівок навіть до естетичних уподобань. І це лише невелика частина потужності,
+яку можуть надати своїм користувачам агенти-помічники коду, такі як ChatGPT.
+Тоді не дивно, чому так багато людей, від венчурних капіталістів і дослідників
+штучного інтелекту до асистентів керівників і студентів, так захоплені агентами
+ШІ.</span></p>
+
+<div style='border:none windowtext 1.0pt;padding:0in 0in 0in 0in'>
+
+<p class=Para05><a name="Figure_7__Chart_output_by_agent"><span lang=uk><img
+border=0 width=345 height=864 id="waaa_0107.png"
+src="What-Are-AI-Agents%20(1)_files/image008.jpg" alt="waaa_0107.png"></span></a><span
+lang=uk> </span></p>
+
+</div>
+
+<div style='border:none windowtext 1.0pt;padding:4.0pt 0in 0in 0in'>
+
+<h3><span lang=uk>Рисунок 7. Виведення діаграми агентом за допомогою наданого
+CSV <a name=9></a><a href="#9_Text_generated_by_OpenAI_s_Cha"><span
+class=7Text><span style='font-size:7.0pt'>9</span></span></a></span></h3>
+
+</div>
+
+<div style='border:none windowtext 1.0pt;padding:0in 0in 0in 0in'>
+
+<h1 style='page-break-after:avoid'><a name="Moving_Forward_with_AI_Agents__B"><span
+lang=uk>Рух вперед з агентами ШІ</span></a></h1>
+
+</div>
+
+<p class=MsoNormal><span lang=uk>Наразі ви бачили, на що здатні агенти ШІ. Але
+будьте певні, це лише початок. Минуло трохи менше року, як такі агенти ШІ, як
+ChatGPT, були оприлюднені. Відтоді такі великі корпорації, як Alphabet,
+Microsoft, Meta, Amazon і Apple, відчули на собі тиск щодо інтеграції агентів
+штучного інтелекту у свої робочі процеси та інвестували значні кошти у
+створення власних LLM для забезпечення цих агентів. Тим часом компанії-початківці
+створювалися за ніч, щоб заповнити прогалини, створені агентами ШІ. Зрештою,
+агентів штучного інтелекту не завжди легко створити, а їх обслуговування може
+бути дорогим з обчислювальної точки зору . Таким чином, хоча майбутнє виглядає
+яскравим для агентів ШІ, вони не позбавлені недоліків і можливостей для
+зростання. Ось кілька проблем, пов’язаних з агентами, і можливостей, на які
+варто звернути увагу в найближчі місяці.</span></p>
+
+<div style='border:none windowtext 1.0pt;padding:0in 0in 0in 0in'>
+
+<h2 style='page-break-after:avoid'><a name="Augmented_Search__One_of_the_mos"><span
+lang=uk>Розширений пошук</span></a></h2>
+
+</div>
+
+<p class=MsoNormal><span lang=uk>Одним із найпотужніших аспектів агентів ШІ є
+їх здатність консолідувати та відтворювати відповідну інформацію. Пошукові
+системи є яскравим прикладом продуктів, які будуть доповнені агентами ШІ або
+навіть повністю замінені. У відповідь на те, що Microsoft випустила Bing AI,
+доповнений штучним інтелектом пошуковий агент, Google випустив власного агента
+під назвою Bard. Але залишається питання, чи є ці агенти економічно ефективними
+програмними продуктами. Зрештою, пошукові системи зазвичай фінансуються за
+рахунок рекламних доходів.</span></p>
+
+<p class=MsoNormal><span lang=uk>Малюючи широким пензлем, на ринку пошуку компанії
+беруть участь в аукціонах, щоб пов’язати свої товари чи послуги з ключовими
+словами пошуку. За кожен клацання оголошення користувачем хост пошукової
+системи отримує гроші (модель плати за клік). Традиційно, в обмін на модель
+безкоштовного використання, користувачі беззастережно погоджуються на рекламу,
+розміщену компаніями, що відповідають ключовим словам, часу доби тощо. Але що
+відбувається з ринком пошуку, коли ви можете шукати саме той вміст, який ви
+хочете, узагальнено, без необхідності натискати рекламу взагалі? Звісно,
+існують ринкові механізми, які можуть виправити ці проблеми: можливо, авторам
+статей, зведених пошуковим запитом, платять дрібні копійки? Справа в тому, що
+які б механізми не з’являлися, вони відрізнятимуться перед лицем нових, більш
+ефективних засобів пошуку, що працюють на основі агентів ШІ.</span></p>
+
+<div style='border:none windowtext 1.0pt;padding:0in 0in 0in 0in'>
+
+<h2 style='page-break-after:avoid'><a name="Product_Integration_and_Isolatio"><span
+lang=uk>Інтеграція та ізоляція продукту</span></a></h2>
+
+</div>
+
+<p class=MsoNormal><span lang=uk>Пошук не буде єдиною сферою впливу агентів ШІ.
+Багато компаній, зокрема Notion, Salesforce і Adobe, інтегрують агентів у свої
+продукти, роблячи ставку на те, що ці інструменти здобудуть їм більшу частку
+ринку та покращать взаємодію з клієнтами. Інші компанії дотримуються свого і
+відмовляються застосовувати агенти ШІ у своїх продуктах. Розрив між компаніями,
+які інвестують у технології на основі штучного інтелекту, і тими, хто уникає
+їх, настільки <a href="https://oreil.ly/m80Ft"><span class=1Text>спотворений,
+що за останніми оцінками </span></a>лише чверть компаній із понад 250
+співробітниками інвестували в будь-який вид штучного інтелекту. Для порівняння,
+це втричі більше, ніж у фірмах із менш ніж 10 працівниками — 7,7%.</span></p>
+
+<p class=MsoNormal><span lang=uk>Цей дисбаланс в інвестиціях у штучний інтелект
+змушує <a href="https://oreil.ly/oZ9uW"><span class=1Text>дослідників
+припускати </span></a>, що якщо ця тенденція збережеться, буде лише подальший
+поділ між малими та середніми компаніями та фірмами-«суперзірками», такими як
+Apple, Google і Amazon. За словами Еріка Бриньольфссона, професора ШІ,
+орієнтованого на людину, Стенфордського університету та автора цього
+дослідження, за нинішніх темпів інвестицій у ШІ «ми летимо наосліп у те, що називають
+четвертою промисловою революцією». <a name=10></a><a
+href="#10_Nikolas_Zolas_et_al____Advanc"><span class=5Text><span
+style='font-size:9.0pt'>10</span></span></a></span></p>
+
+<p class=MsoNormal><span lang=uk>У найближчі місяці та роки буде цікаво
+побачити, чи зростуть інвестиції в ШІ, коли використання агентів
+нормалізується.</span></p>
+
+<div style='border:none windowtext 1.0pt;padding:0in 0in 0in 0in'>
+
+<h2 style='page-break-after:avoid'><a name="Infrastructure__Maintaining_AI_a"><span
+lang=uk>Інфраструктура</span></a></h2>
+
+</div>
+
+<p class=MsoNormal><span lang=uk>Підтримка агентів ШІ може бути дорогою
+справою. Це значною мірою пов’язано з інтенсивним обчислювальним характером
+роботи механізмів LLM, які забезпечують ці агенти. Але це точно не триватиме.
+Протягом останнього року, оскільки інтерес до агентів штучного інтелекту
+експоненціально зріс, також зріс рух до створення більш надійної та зручної
+інфраструктури для них. Тоді як колись для роботи агентів штучного інтелекту
+потрібен був хмарний хостинг, сьогодні такі LLM, як Llama 2, можна запускати на
+вашому комп’ютері локально. Дійсно, у той час як багато інвесторів і
+дослідників зосереджені на тому, що можуть робити агенти штучного інтелекту,
+багато інших розробників і інженерів програмного забезпечення люто створюють
+нові типи інфраструктури, такі як <a href="https://oreil.ly/qcWy8"><span
+class=1Text>потокове LLM </span></a>, щоб дозволити користувачам
+використовувати потужність агентів за невелику частку їх поточної вартості. У
+найближчі місяці та роки буде важливо стежити за інфраструктурою, розробленою
+для цих інструментів. Особи, які стануть експертами в цих інструментах, відомих
+як <span class=2Text>LLMOps </span>, швидше за все, отримають хорошу роботу та
+винагороду.</span></p>
+
+<div style='border:none windowtext 1.0pt;padding:0in 0in 0in 0in'>
+
+<h2 style='page-break-after:avoid'><a name="Security__Legislation__and_Ethic"><span
+lang=uk>Безпека, законодавство та етика</span></a></h2>
+
+</div>
+
+<p class=MsoNormal><span lang=uk>Нарешті, важливо зазначити, що хоча агенти
+штучного інтелекту обов’язково стануть ще потужнішими та впливовими в
+економіці, вони не позбавлені недоліків або етичних сірих зон. Це тому, що
+агенти штучного інтелекту можуть бути небезпечними з тієї самої причини, з якої
+вони можуть бути корисними. Користувачі, які нічого не підозрюють, можуть
+надати агентам конфіденційну інформацію про компанію та особисту інформацію,
+яка може поставити під загрозу важливу інтелектуальну власність або
+інфраструктуру компанії. Інші зазначають, що навіть такий вибір, як тон і голос
+агента штучного інтелекту за замовчуванням, може бути етичним. Інженери, які
+створюють агентів, навмисно чи ненавмисно визначають стать створених ними
+агентів? Чи може це сприяти ненавмисній шкоді суспільству?</span></p>
+
+<p class=MsoNormal><span lang=uk>Це вже не кажучи про механізми LLM, що стоять
+за агентами. Деякі магістри права, якими користуються агенти, пройшли навчання
+на матеріалах, <a href="https://oreil.ly/ZZV7o"><span class=1Text>на
+використання яких їхні власники інтелектуальної власності не дали дозволу </span></a>.
+І багато LLM мають потенціал для поширення дезінформації або відкритої брехні.
+З цих та інших причин <a href="https://oreil.ly/O5mDI"><span class=1Text>законодавці
+багатьох країн уже розглядають законодавчі акти </span></a>щодо обмеження або
+запобігання використання агентів ШІ. Ці проблеми обов’язково будуть у центрі
+уваги в найближчі місяці та роки, і на них варто звернути увагу.</span></p>
+
+<div style='border:none windowtext 1.0pt;padding:0in 0in 0in 0in'>
+
+<h1 style='page-break-after:avoid'><a name="Conclusion__While_the_future_of"><span
+lang=uk>Висновок</span></a></h1>
+
+</div>
+
+<p class=MsoNormal><span lang=uk>Хоча майбутнє агентів штучного інтелекту,
+безперечно, буде іншим навіть через шість місяців, джин з агентів штучного
+інтелекту вийшов з пляшки. Надто багато людей отримали вигоду від агентів
+штучного інтелекту, щоб їхню корисність можна було ігнорувати, і занадто багато
+розробників знають, як створювати ці інструменти, щоб мати надію зупинити їхній
+прогрес. Питання розвитку агентів ШІ полягає не в тому, чи будуть вони
+використовуватися, а в тому, як їх використовуватимуть. Якщо після прочитання
+цього звіту ви хоч трохи зацікавилися цим, немає кращого часу, ніж зараз, щоб
+почати.</span></p>
+
+<p class=Para12><a name="1_Written_with_text_generated_by"></a><a href="#1"><span
+class=5Text><span lang=uk style='font-size:9.0pt'>1 </span></span></a><span
+lang=uk>Написано з текстом, згенерованим OpenAI's Chat GPT-4, 5 серпня 2023 р.</span></p>
+
+<p class=MsoNormal><a name="2_Text_generated_by_OpenAI_s_Cha"></a><a href="#2"><span
+class=5Text><span lang=uk style='font-size:9.0pt'>2 </span></span></a><span
+lang=uk>Текст, створений OpenAI's Chat GPT-4, 5 серпня 2023 р.</span></p>
+
+<p class=MsoNormal><a name="3__Document_Question_Answering"></a><a href="#3"><span
+class=5Text><span lang=uk style='font-size:9.0pt'>3</span></span></a><span
+lang=uk> </span><a href="https://oreil.ly/WNapU"><span class=1Text><span
+lang=uk>«Відповіді на запитання в документах», </span></span></a><span lang=uk>GitHub,
+доступ 29 жовтня 2023 р.</span></p>
+
+<p class=MsoNormal><a name="4_Text_generated_by_Chainlit_and"></a><a href="#4"><span
+class=5Text><span lang=uk style='font-size:9.0pt'>4 </span></span></a><span
+lang=uk>Текст, створений </span><a href="https://oreil.ly/WNapU"><span
+class=1Text><span lang=uk>Chainlit і PandasAI </span></span></a><span lang=uk>,
+5 серпня 2023 р.</span></p>
+
+<p class=MsoNormal><a name="5_Text_generated_by_Chainlit_and"></a><a href="#5"><span
+class=5Text><span lang=uk style='font-size:9.0pt'>5 </span></span></a><span
+lang=uk>Текст, створений Chainlit і PandasAI, 5 серпня 2023 р.</span></p>
+
+<p class=MsoNormal><a name="6_Text_generated_by_HuggingFace"></a><a href="#6"><span
+class=5Text><span lang=uk style='font-size:9.0pt'>6 </span></span></a><span
+lang=uk>Текст, створений </span><a href="https://oreil.ly/zJ8e5"><span
+class=1Text><span lang=uk>HuggingFace Chat і LlaMa 2I </span></span></a><span
+lang=uk>, 6 серпня 2023 р.</span></p>
+
+<p class=MsoNormal><a name="7_Text_generated_by_OpenAI_s_Cha"></a><a href="#7"><span
+class=5Text><span lang=uk style='font-size:9.0pt'>7 </span></span></a><span
+lang=uk>Текст, створений OpenAI's </span><a href="https://oreil.ly/6Yu-n"><span
+class=1Text><span lang=uk>ChatGPT </span></span></a><span lang=uk>, 6 серпня
+2023 р.</span></p>
+
+<p class=MsoNormal><a name="8_Text_generated_by_OpenAI_s_Cha"></a><a href="#8"><span
+class=5Text><span lang=uk style='font-size:9.0pt'>8 </span></span></a><span
+lang=uk>Текст, створений OpenAI's ChatGPT, 6 серпня 2023 р.</span></p>
+
+<p class=MsoNormal><a name="9_Text_generated_by_OpenAI_s_Cha"></a><a href="#9"><span
+class=5Text><span lang=uk style='font-size:9.0pt'>9 </span></span></a><span
+lang=uk>Текст, створений OpenAI's ChatGPT, 6 серпня 2023 р.</span></p>
+
+<p class=Para13><a name="10_Nikolas_Zolas_et_al____Advanc"></a><a href="#10"><span
+class=8Text><span lang=uk style='font-size:9.0pt;color:blue'>10 </span></span></a><span
+class=3Text><span lang=uk>Ніколас Золас та ін., </span></span><a
+href="https://oreil.ly/oZ9uW"><span lang=uk style='color:blue'>«Впровадження та
+використання передових технологій компаніями США: дані щорічного опитування
+бізнесу», </span></a><span class=3Text><span lang=uk>Бюро перепису населення
+США, 2 липня 2020 р.</span></span></p>
+
+<div style='border:none windowtext 1.0pt;padding:0in 0in 0in 0in'>
+
+<h1 style='page-break-before:always;page-break-after:avoid'><a
+name="About_the_Author___Ben_Labaschin_1"></a><a
+name="About_the_Author___Ben_Labaschin"></a><a name="Top_of_colophon01_html"></a><a
+name="About_the_Author___Ben_Labaschin_2"><span lang=uk>Про автора</span></a></h1>
+
+</div>
+
+<p class=MsoNormal><span class=6Text><span lang=uk>Бен Лабасчин </span></span><span
+lang=uk>— головний інженер машинного навчання в Workhelix, де він розробляє
+генеративний ШІ та великі мовні моделі та застосовує їх до економічних проблем.
+Раніше Бен керував ініціативами машинного навчання в таких компаніях, як
+Hopper, XPO Logistics і Blackstone. Коли Бен не працює, він любить проводити
+час зі своїм собакою Атласом або племінницею Шошаною.</span></p>
+
+</div>
+
+</body>
+
+</html>
