@@ -95,4 +95,4 @@ Je fais des cauchemars dans lesquels on me tue — parfois c’est grand-mère, 
 
 Aidez-moi, s’il vous plaît.
 
-{{ gallery }}
+{% gallery %}
