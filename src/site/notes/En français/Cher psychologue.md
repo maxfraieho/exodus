@@ -94,3 +94,5 @@ Aujourd’hui, je vis dans une chambre séparée du même foyer que maman, aprè
 Je fais des cauchemars dans lesquels on me tue — parfois c’est grand-mère, parfois ce sont des Afghans du foyer, parfois maman. Je dors très mal, je mets longtemps à m’endormir. J’ai eu des problèmes cardiaques et j’ai consulté des médecins.
 
 Aidez-moi, s’il vous plaît.
+
+{{ gallery }}
