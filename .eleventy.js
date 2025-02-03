@@ -33,6 +33,30 @@ const tagRegex = /(^|\s|\>)(#[^\s!@#$%^&*()=+\.,\[{\]};:'"?><]+)(?!([^<]*>))/g;
 
 module.exports = function (eleventyConfig) {
 
+  const fs = require("fs");
+const path = require("path");
+
+eleventyConfig.addShortcode("gallery", function () {
+  const imageDir = "src/site/img/gallery/";
+  const images = fs.readdirSync(imageDir)
+    .filter(file => /\.(jpg|jpeg|png|gif|webp)$/i.test(file))
+    .map(file => `/img/gallery/${file}`);
+
+  return `
+    <div class="gallery">
+      ${images.map(image => `
+        <a href="${image}" data-lightbox="gallery">
+          <img src="${image}" alt="Галерея зображень">
+        </a>
+      `).join("")}
+    </div>
+  `;
+});
+
+// Додаємо копіювання зображень у dist/
+eleventyConfig.addPassthroughCopy("src/site/img/gallery");
+
+
   eleventyConfig.addShortcode("youtube", (videoURL, title) => {
     const url = new URL(videoURL);
     const id = url.searchParams.get("v");
