@@ -501,19 +501,3 @@ docker run --rm -d tgbot
 ## Висновки
 
 Ми розглянули приклад, де Телеграм-бот слугує інтерфейсом між користувачем без доступу до корпоративної мережі та корпоративною базою даних (MS SQL). Такий підхід дає змогу створювати й розгортати мікросервісну архітектуру ботів (у docker-контейнерах), підвищуючи надійність та керованість системи.
-
----
-
-**Теги:**
-
-- [telegram-bot](/ru/search/?target_type=posts&order=relevance&q=[telegram-bot])
-- [aiogram3](/ru/search/?target_type=posts&order=relevance&q=[aiogram3])
-- [sql server](/ru/search/?target_type=posts&order=relevance&q=[sql+server])
-- [docker](/ru/search/?target_type=posts&order=relevance&q=[docker])
-- [dockerfile](/ru/search/?target_type=posts&order=relevance&q=[dockerfile])
-
-**Хаби:**
-
-- [Microsoft SQL Server](/ru/hubs/mssql/)
-- [Python](/ru/hubs/python/)
-- [ERP-системи](/ru/hubs/erp/)
