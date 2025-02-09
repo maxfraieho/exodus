@@ -31,6 +31,7 @@ def find_markdown_and_images(root_dir, ignore_dirs=None, image_extensions=None):
                 list_md_files.append(full_file_path)
 
     # Знаходимо посилання на зображення в Markdown-файлах
+    # (якщо потрібно, можна поправити регулярний вираз до стандартного формату: r'!.*?([^)]+)')
     image_pattern = re.compile(r'!.*?([^)]+)')
     for md_path in list_md_files:
         try:
@@ -52,8 +53,8 @@ def find_markdown_and_images(root_dir, ignore_dirs=None, image_extensions=None):
 
 def convert_markdown_files_to_combined_html(md_files):
     """
-    Конвертує кожен Markdown-файл у HTML, виправляє відносні посилання на зображення (перетворюючи їх у абсолютні file URI)
-    та об'єднує результати в один HTML-документ.
+    Конвертує кожен Markdown-файл у HTML, виправляє відносні посилання на зображення 
+    (перетворюючи їх у абсолютні file URI) та об'єднує результати в один HTML-документ.
     """
     combined_html = (
         "<html><head><meta charset='utf-8'>"
@@ -86,51 +87,61 @@ def convert_markdown_files_to_combined_html(md_files):
     return combined_html
 
 def main():
-    print("=== Перетворення всіх .md у PDF ===\n")
+    print("=== Генеруємо PDF для кожної підпапки з Markdown ===\n")
     
-    # За замовчуванням беремо директорію, де знаходиться скрипт
+    # Встановлюємо базову директорію. За замовчуванням використовуємо "src/site/notes" 
+    # відносно розташування скрипту.
     script_dir = os.path.dirname(os.path.abspath(__file__))
-    root_dir = input(f"Введіть шлях до проєкту (за замовчуванням {script_dir}): ").strip() or script_dir
-    output_pdf = input("Вкажіть ім'я вихідного PDF (за замовчуванням merged.pdf): ").strip() or "merged.pdf"
+    default_base_dir = os.path.join(script_dir, "src/site/notes")
+    base_dir = input(f"Введіть шлях до базової директорії з нотатками (за замовчуванням {default_base_dir}): ").strip() or default_base_dir
+    output_dir = input("Введіть шлях до папки, куди зберігати PDF (за замовчуванням базова директорія): ").strip() or base_dir
     additional_ignore_str = input("Додаткові папки для ігнорування (через кому чи пробіл) або Enter: ").strip()
     additional_ignore = set()
     if additional_ignore_str:
         additional_ignore = {d.strip() for d in additional_ignore_str.replace(',', ' ').split()}
 
-    # Знаходимо Markdown-файли та посилання на зображення
-    md_files, img_paths = find_markdown_and_images(
-        root_dir=root_dir,
-        ignore_dirs={'.git', 'node_modules', 'venv', 'dist', '__pycache__'}.union(additional_ignore),
-        image_extensions={'.png', '.jpg', '.jpeg', '.gif', '.svg'}
-    )
-    if not md_files:
-        print("Не знайдено жодного .md-файлу. Завершення.")
+    # Отримуємо список підпапок у базовій директорії, які не входять до списку ігнорування.
+    subdirs = []
+    for entry in os.listdir(base_dir):
+        full_path = os.path.join(base_dir, entry)
+        if os.path.isdir(full_path) and entry not in {'.git', 'node_modules', 'venv', 'dist', '__pycache__'} and entry not in additional_ignore:
+            subdirs.append(full_path)
+
+    if not subdirs:
+        print("Не знайдено підпапок у", base_dir)
         return
 
-    print("\nЗнайдено Markdown-файли:")
-    for m in md_files:
-        print("  ", m)
+    for subdir in subdirs:
+        folder_name = os.path.basename(subdir)
+        print(f"\nОбробка папки: {subdir}")
+        
+        # Знаходимо Markdown-файли в поточній підпапці
+        md_files, img_paths = find_markdown_and_images(
+            root_dir=subdir,
+            ignore_dirs={'.git', 'node_modules', 'venv', 'dist', '__pycache__'}.union(additional_ignore),
+            image_extensions={'.png', '.jpg', '.jpeg', '.gif', '.svg'}
+        )
+        if not md_files:
+            print(f"У папці {subdir} не знайдено жодного .md-файлу, пропускаємо.")
+            continue
 
-    # Перевірка існування зображень (опційно)
-    missing_images = [img for img in img_paths if not os.path.isfile(img)]
-    if missing_images:
-        print("\nУВАГА! Зображення, які згадано, але не існують:")
-        for mi in missing_images:
-            print("  ", mi)
-        print("Перевірте правильність шляхів до зображень.\n")
+        print("Знайдено Markdown-файли:")
+        for m in md_files:
+            print("  ", m)
 
-    print("Генеруємо об'єднаний HTML з усіх Markdown-файлів...")
-    combined_html = convert_markdown_files_to_combined_html(md_files)
+        print(f"Генеруємо об'єднаний HTML для папки {folder_name}...")
+        combined_html = convert_markdown_files_to_combined_html(md_files)
 
-    print("Конвертуємо HTML у PDF за допомогою WeasyPrint...")
-    try:
-        # base_url потрібен для коректного завантаження ресурсів
-        HTML(string=combined_html, base_url=root_dir).write_pdf(output_pdf)
-        print(f"PDF успішно сформовано: {output_pdf}")
-    except Exception as e:
-        print("Помилка під час конвертації у PDF:", e)
+        # Ім'я PDF відповідає назві папки (наприклад, "topic1.pdf")
+        output_pdf = os.path.join(output_dir, f"{folder_name}.pdf")
+        try:
+            # base_url встановлено на поточну підпапку, щоб WeasyPrint правильно знаходив ресурси
+            HTML(string=combined_html, base_url=subdir).write_pdf(output_pdf)
+            print(f"PDF успішно сформовано: {output_pdf}")
+        except Exception as e:
+            print(f"Помилка при конвертації у PDF для {folder_name}:", e)
 
-    print("Скрипт завершено.")
+    print("\nСкрипт завершено.")
 
 if __name__ == "__main__":
     main()
