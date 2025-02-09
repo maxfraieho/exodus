@@ -3,8 +3,12 @@ name: Generate PDF
 on:
   push:
     branches: [ "main" ]
+    paths:
+      - "src/site/notes/**"
   pull_request:
     branches: [ "main" ]
+    paths:
+      - "src/site/notes/**"
 
 jobs:
   generate-pdf:
@@ -39,7 +43,7 @@ jobs:
           printf "src/site/notes\nmerged.pdf\n\n" | python codetomd.py
 
       - name: Upload PDF artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: merged.pdf
           path: merged.pdf
