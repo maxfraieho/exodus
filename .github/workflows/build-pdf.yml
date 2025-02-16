@@ -1,4 +1,4 @@
-name: Generate PDF and Update noco-db
+name: Generate PDF and Update Noco-DB
 
 on:
   push:
@@ -11,7 +11,7 @@ on:
       - "src/site/notes/**"
 
 jobs:
-  generate-and-send-pdf:
+  generate-and-update-pdf:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -26,7 +26,8 @@ jobs:
             libpangocairo-1.0-0 \
             libgdk-pixbuf2.0-0 \
             libffi-dev \
-            shared-mime-info
+            shared-mime-info \
+            jq
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -40,23 +41,39 @@ jobs:
 
       - name: Generate PDFs per topic
         run: |
-          # Передаємо:
-          # 1. Базову директорію з нотатками (src/site/notes)
-          # 2. Порожній рядок для вихідної директорії (за замовчуванням – базова директорія)
-          # 3. Порожній рядок для додаткових ігнорованих папок
+          # Запускаємо генерацію PDF для кожної теми (підпапки в src/site/notes)
           printf "src/site/notes\n\n\n" | python codetomd.py
 
-      - name: Update PDFs in noco-db
+      - name: Update PDF records in Noco-DB
         env:
           NOCO_DB_API_URL: "https://nocodb.soyka.pp.ua"
-          NOCO_DB_API_KEY: ${{ secrets.NOCO_DB_API_KEY }}
+          NOCO_DB_TABLE_ID: "m3plh50uwtk34zd"
+          NOCO_DB_VIEW_ID: "vwtr2835wqny8msk"
+          NOCO_DB_API_TOKEN: ${{ secrets.NOCO_DB_API_KEY }}
         run: |
-          echo "Uploading (or updating) generated PDFs to noco-db..."
+          echo "Processing PDF files for Noco-DB update..."
           for pdf in src/site/notes/*.pdf; do
-            echo "Updating $pdf..."
-            curl -X PUT "$NOCO_DB_API_URL/api/v1/upload" \
-              -H "x-api-key: $NOCO_DB_API_KEY" \
-              -F "file=@$pdf" \
-              -F "filename=$(basename $pdf)" \
-              -F "overwrite=true"
+            filename=$(basename "$pdf")
+            echo "Processing file: $filename"
+            # Виконуємо GET-запит для перевірки наявності запису з даним filename
+            record=$(curl -s --request GET \
+              --url "$NOCO_DB_API_URL/api/v2/tables/$NOCO_DB_TABLE_ID/records?where=filename,eq,$filename" \
+              --header "xc-token: $NOCO_DB_API_TOKEN")
+            if echo "$record" | grep -q '"data":\[\]'; then
+              echo "Record for $filename not found. Creating a new record..."
+              curl --request POST \
+                --url "$NOCO_DB_API_URL/api/v2/tables/$NOCO_DB_TABLE_ID/records" \
+                --header "xc-token: $NOCO_DB_API_TOKEN" \
+                -F "filename=$filename" \
+                -F "file=@$pdf"
+            else
+              # Отримуємо ID першого знайденого запису
+              recordId=$(echo "$record" | jq -r '.data[0].id')
+              echo "Record for $filename exists (ID: $recordId). Updating the record..."
+              curl --request PATCH \
+                --url "$NOCO_DB_API_URL/api/v2/tables/$NOCO_DB_TABLE_ID/records/$recordId" \
+                --header "xc-token: $NOCO_DB_API_TOKEN" \
+                -F "filename=$filename" \
+                -F "file=@$pdf"
+            fi
           done
