@@ -55,10 +55,12 @@ jobs:
           for pdf in src/site/notes/*.pdf; do
             filename=$(basename "$pdf")
             echo "Processing file: $filename"
+
             # Отримуємо всі записи з таблиці
             records=$(curl -s --request GET \
               --url "$NOCO_DB_API_URL/api/v2/tables/$NOCO_DB_TABLE_ID/records" \
               --header "xc-token: $NOCO_DB_API_TOKEN")
+
             # Шукаємо запис за filename за допомогою Python
             record=$(python3 -c '
 import json, sys
@@ -68,6 +70,7 @@ for item in records.get("data", []):
         print(json.dumps(item))
         break
 ' "$filename" <<< "$records")
+
             if [ -z "$record" ]; then
               echo "Record for $filename not found. Creating a new record..."
               response=$(curl --request POST \
@@ -78,12 +81,16 @@ for item in records.get("data", []):
               echo "Response: $response"
             else
               recordId=$(echo "$record" | python3 -c 'import json, sys; print(json.load(sys.stdin)["id"])')
-              echo "Record for $filename exists (ID: $recordId). Updating the record..."
-              response=$(curl --request PATCH \
-                --url "$NOCO_DB_API_URL/api/v2/tables/$NOCO_DB_TABLE_ID/records/$recordId" \
-                --header "xc-token: $NOCO_DB_API_TOKEN" \
-                -F "filename=$filename" \
-                -F "file=@$pdf")
-              echo "Response: $response"
+              if [ "$recordId" != "null" ]; then
+                echo "Record for $filename exists (ID: $recordId). Updating the record..."
+                response=$(curl --request PATCH \
+                  --url "$NOCO_DB_API_URL/api/v2/tables/$NOCO_DB_TABLE_ID/records/$recordId" \
+                  --header "xc-token: $NOCO_DB_API_TOKEN" \
+                  -F "filename=$filename" \
+                  -F "file=@$pdf")
+                echo "Response: $response"
+              else
+                echo "Error: Failed to fetch valid record ID for $filename"
+              fi
             fi
           done
