@@ -50,7 +50,7 @@ jobs:
         env:
           NOCO_DB_API_URL: "https://nocodb.soyka.pp.ua"
           NOCO_DB_TABLE_ID: "m3plh50uwtk34zd"
-          NOCO_DB_API_TOKEN: ${{ secrets.NOCO_DB_API_KEY }}
+          NOCO_DB_API_TOKEN: "n21MaOg7V0woheRDH5g7WYRajM_xDdFpkv2cU4hj"
         run: |
           echo "Processing PDF files for Noco-DB update..."
           for pdf in src/site/notes/*.pdf; do
@@ -60,7 +60,7 @@ jobs:
             encoded_filename=$(python3 -c "import urllib.parse, sys; print(urllib.parse.quote(sys.argv[1]))" "$filename")
             # Виконуємо GET-запит для перевірки наявності запису з даним filename
             record=$(curl -s --request GET \
-              --url "$NOCO_DB_API_URL/api/v2/tables/$NOCO_DB_TABLE_ID/records?where=filename,eq,$encoded_filename" \
+              --url "$NOCO_DB_API_URL/api/v2/tables/$NOCO_DB_TABLE_ID/records?where=(filename,eq,$encoded_filename)" \
               --header "xc-token: $NOCO_DB_API_TOKEN")
             if echo "$record" | grep -q '"data":\[\]'; then
               echo "Record for $filename not found. Creating a new record..."
