@@ -1,5 +1,4 @@
 name: Generate PDF and Update Noco-DB
-
 on:
   push:
     branches:
@@ -42,7 +41,7 @@ jobs:
 
       - name: Generate PDFs per topic
         run: |
-          # Генеруємо PDF для кожної підпапки в src/site/notes
+          # Generate PDF for each subfolder in src/site/notes
           printf "src/site/notes\n\n\n" | python codetomd.py
 
       - name: Update PDF records in Noco-DB
@@ -55,12 +54,11 @@ jobs:
           for pdf in src/site/notes/*.pdf; do
             filename=$(basename "$pdf")
             echo "Processing file: $filename"
-            # Отримуємо всі записи з таблиці
+            # Get all records from the table
             records=$(curl -s --request GET \
               --url "$NOCO_DB_API_URL/api/v2/tables/$NOCO_DB_TABLE_ID/records" \
               --header "xc-token: $NOCO_DB_API_TOKEN")
-
-            # Шукаємо запис за filename за допомогою Python
+            # Search for record by filename using Python
             record=$(python3 -c '
 import json, sys
 records = json.loads(sys.stdin.read())
@@ -69,7 +67,6 @@ for item in records.get("data", []):
         print(json.dumps(item))
         break
 ' "$filename" <<< "$records")
-
             if [ -z "$record" ]; then
               echo "Record for $filename not found. Creating a new record..."
               response=$(curl --request POST \
