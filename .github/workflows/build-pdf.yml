@@ -50,14 +50,13 @@ jobs:
         env:
           NOCO_DB_API_URL: "https://nocodb.soyka.pp.ua"
           NOCO_DB_TABLE_ID: "m3plh50uwtk34zd"
-          NOCO_DB_VIEW_ID: "vwtr2835wqny8msk"
           NOCO_DB_API_TOKEN: ${{ secrets.NOCO_DB_API_KEY }}
         run: |
           echo "Processing PDF files for Noco-DB update..."
           for pdf in src/site/notes/*.pdf; do
             filename=$(basename "$pdf")
             echo "Processing file: $filename"
-            # URL-кодуємо ім'я файлу, щоб уникнути проблем з спецсимволами
+            # URL-кодуємо ім'я файлу, щоб уникнути проблем із спецсимволами
             encoded_filename=$(python3 -c "import urllib.parse, sys; print(urllib.parse.quote(sys.argv[1]))" "$filename")
             # Виконуємо GET-запит для перевірки наявності запису з даним filename
             record=$(curl -s --request GET \
