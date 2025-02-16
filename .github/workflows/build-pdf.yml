@@ -50,7 +50,7 @@ jobs:
         env:
           NOCO_DB_API_URL: "https://nocodb.soyka.pp.ua"
           NOCO_DB_TABLE_ID: "m3plh50uwtk34zd"
-          NOCO_DB_API_TOKEN: "n21MaOg7V0woheRDH5g7WYRajM_xDdFpkv2cU4hj"
+          NOCO_DB_API_TOKEN: ${{ secrets.NOCO_DB_API_KEY }}
         run: |
           echo "Processing PDF files for Noco-DB update..."
           for pdf in src/site/notes/*.pdf; do
@@ -62,20 +62,29 @@ jobs:
             record=$(curl -s --request GET \
               --url "$NOCO_DB_API_URL/api/v2/tables/$NOCO_DB_TABLE_ID/records?where=(filename,eq,$encoded_filename)" \
               --header "xc-token: $NOCO_DB_API_TOKEN")
+            
+            # Перевіряємо, чи є дані у відповіді
             if echo "$record" | grep -q '"data":\[\]'; then
               echo "Record for $filename not found. Creating a new record..."
-              curl --request POST \
+              response=$(curl --request POST \
                 --url "$NOCO_DB_API_URL/api/v2/tables/$NOCO_DB_TABLE_ID/records" \
                 --header "xc-token: $NOCO_DB_API_TOKEN" \
                 -F "filename=$filename" \
-                -F "file=@$pdf"
+                -F "file=@$pdf")
+              echo "Response: $response"
             else
+              # Витягуємо recordId з відповіді
               recordId=$(echo "$record" | jq -r '.data[0].id')
-              echo "Record for $filename exists (ID: $recordId). Updating the record..."
-              curl --request PATCH \
-                --url "$NOCO_DB_API_URL/api/v2/tables/$NOCO_DB_TABLE_ID/records/$recordId" \
-                --header "xc-token: $NOCO_DB_API_TOKEN" \
-                -F "filename=$filename" \
-                -F "file=@$pdf"
+              if [ "$recordId" != "null" ]; then
+                echo "Record for $filename exists (ID: $recordId). Updating the record..."
+                response=$(curl --request PATCH \
+                  --url "$NOCO_DB_API_URL/api/v2/tables/$NOCO_DB_TABLE_ID/records/$recordId" \
+                  --header "xc-token: $NOCO_DB_API_TOKEN" \
+                  -F "filename=$filename" \
+                  -F "file=@$pdf")
+                echo "Response: $response"
+              else
+                echo "Error: Record ID is null for $filename. Skipping update."
+              fi
             fi
           done
