@@ -55,7 +55,6 @@ jobs:
           for pdf in src/site/notes/*.pdf; do
             filename=$(basename "$pdf")
             echo "Processing file: $filename"
-
             # Отримуємо всі записи з таблиці
             records=$(curl -s --request GET \
               --url "$NOCO_DB_API_URL/api/v2/tables/$NOCO_DB_TABLE_ID/records" \
