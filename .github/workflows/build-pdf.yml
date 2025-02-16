@@ -55,12 +55,10 @@ jobs:
           for pdf in src/site/notes/*.pdf; do
             filename=$(basename "$pdf")
             echo "Processing file: $filename"
-
             # Отримуємо всі записи з таблиці
             records=$(curl -s --request GET \
               --url "$NOCO_DB_API_URL/api/v2/tables/$NOCO_DB_TABLE_ID/records" \
               --header "xc-token: $NOCO_DB_API_TOKEN")
-
             # Шукаємо запис за filename за допомогою Python
             record=$(python3 -c '
 import json, sys
@@ -70,7 +68,6 @@ for item in records.get("data", []):
         print(json.dumps(item))
         break
 ' "$filename" <<< "$records")
-
             if [ -z "$record" ]; then
               echo "Record for $filename not found. Creating a new record..."
               response=$(curl --request POST \
