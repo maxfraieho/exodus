@@ -198,6 +198,7 @@ ssh -p 2222 your_username@localhost
     
     - Використовуйте `docker logs -f cloudflared` для моніторингу роботи тунелю або керуйте тунелем через панель Cloudflare Zero Trust.
 
----
 
-**Готово!** Ви налаштували Cloudflare Tunnel у Docker для Portainer та SSH, а також отримали можливість зручно підключатися зі смартфона через Cloudflare.
+Без контейнера 
+
+cloudflared tunnel route dns droidian code.stopbot.pp.ua
