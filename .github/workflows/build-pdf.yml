@@ -1,4 +1,4 @@
-name: Generate PDF
+name: Generate PDF and Update noco-db
 
 on:
   push:
@@ -11,7 +11,7 @@ on:
       - "src/site/notes/**"
 
 jobs:
-  generate-pdf:
+  generate-and-send-pdf:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -42,12 +42,21 @@ jobs:
         run: |
           # Передаємо:
           # 1. Базову директорію з нотатками (src/site/notes)
-          # 2. Порожній рядок для output_dir – за замовчуванням буде базова директорія
+          # 2. Порожній рядок для вихідної директорії (за замовчуванням – базова директорія)
           # 3. Порожній рядок для додаткових ігнорованих папок
           printf "src/site/notes\n\n\n" | python codetomd.py
 
-      - name: Upload PDF artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: generated-pdfs
-          path: src/site/notes/*.pdf
+      - name: Update PDFs in noco-db
+        env:
+          NOCO_DB_API_URL: "https://nocodb.soyka.pp.ua"
+          NOCO_DB_API_KEY: ${{ secrets.NOCO_DB_API_KEY }}
+        run: |
+          echo "Uploading (or updating) generated PDFs to noco-db..."
+          for pdf in src/site/notes/*.pdf; do
+            echo "Updating $pdf..."
+            curl -X PUT "$NOCO_DB_API_URL/api/v1/upload" \
+              -H "x-api-key: $NOCO_DB_API_KEY" \
+              -F "file=@$pdf" \
+              -F "filename=$(basename $pdf)" \
+              -F "overwrite=true"
+          done
