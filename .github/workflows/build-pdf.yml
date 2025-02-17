@@ -55,28 +55,32 @@ jobs:
         run: |
           echo "Processing PDF files for Noco-DB update..."
           for pdf in src/site/notes/*.pdf; do
-            filename=$(basename "$pdf")
+            filename=`${(basename "}$`pdf")
             echo "Processing file: $filename"
             # URL-кодуємо ім'я файлу, щоб уникнути проблем з спецсимволами
-            encoded_filename=$(python3 -c "import urllib.parse, sys; print(urllib.parse.quote(sys.argv[1]))" "$filename")
+            encoded_filename=`${(python3 -c "import urllib.parse, sys; print(urllib.parse.quote(sys.argv[1]))" "}$`filename")
             # Виконуємо GET-запит для перевірки наявності запису з даним filename
             record=$(curl -s --request GET \
-              --url "$NOCO_DB_API_URL/api/v2/tables/$NOCO_DB_TABLE_ID/records?where=filename,eq,$encoded_filename" \
+              --url "`${NOCO_DB_API_URL/api/v2/tables/}$`NOCO_DB_TABLE_ID/records?where=filename,eq,$encoded_filename" \
               --header "xc-token: $NOCO_DB_API_TOKEN")
-            if echo "$record" | grep -q '"data":'; then
+            if echo "$record" | jq -e '.data | length == 0' > /dev/null; then
               echo "Record for $filename not found. Creating a new record..."
               curl --request POST \
-                --url "$NOCO_DB_API_URL/api/v2/tables/$NOCO_DB_TABLE_ID/records" \
+                --url "`${NOCO_DB_API_URL/api/v2/tables/}$`NOCO_DB_TABLE_ID/records" \
                 --header "xc-token: $NOCO_DB_API_TOKEN" \
                 -F "filename=$filename" \
                 -F "file=@$pdf"
             else
-              recordId=$(echo "$record" | jq -r '.data[0].id')
-              echo "Record for $filename exists (ID: $recordId). Updating the record..."
-              curl --request PATCH \
-                --url "$NOCO_DB_API_URL/api/v2/tables/$NOCO_DB_TABLE_ID/records/$recordId" \
-                --header "xc-token: $NOCO_DB_API_TOKEN" \
-                -F "filename=$filename" \
-                -F "file=@$pdf"
+              recordId=`${(echo "}$`record" | jq -r '.data[0].id')
+              if [ "$recordId" != "null" ]; then
+                echo "Record for `${filename exists (ID:}$`recordId). Updating the record..."
+                curl --request PATCH \
+                  --url "`${NOCO_DB_API_URL/api/v2/tables/}$`NOCO_DB_TABLE_ID/records/$recordId" \
+                  --header "xc-token: $NOCO_DB_API_TOKEN" \
+                  -F "filename=$filename" \
+                  -F "file=@$pdf"
+              else
+                echo "Record ID is null. Skipping update for $filename."
+              fi
             fi
           done
