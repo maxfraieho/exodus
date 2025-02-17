@@ -63,11 +63,11 @@ jobs:
             
             # Отримуємо запис із NocoDB
             response=$(curl -s --request GET \
-              --url "$NOCO_DB_API_URL/api/v2/tables/$NOCO_DB_TABLE_ID/records?where=(filename,eq,$encoded_filename)&viewId=$NOCO_DB_VIEW_ID" \
+              --url "$NOCO_DB_API_URL/api/v2/tables/$NOCO_DB_TABLE_ID/records?where=filename,eq,$encoded_filename" \
               --header "xc-token: $NOCO_DB_API_TOKEN")
             
             # Перевіряємо, чи запис існує
-            if echo "$response" | jq -e '.list | length == 0' > /dev/null; then
+            if echo "$response" | jq -e '.data | length == 0' > /dev/null; then
               echo "Record for $filename not found. Creating a new record..."
               
               attempt=0
@@ -76,8 +76,9 @@ jobs:
                 response=$(curl --silent --show-error --fail --request POST \
                   --url "$NOCO_DB_API_URL/api/v2/tables/$NOCO_DB_TABLE_ID/records" \
                   --header "xc-token: $NOCO_DB_API_TOKEN" \
-                  --data "{\"Опис PDF\": \"$filename\", \"PDF\": [{\"title\": \"$filename\", \"url\": \"path/to/$filename\"}]}")
-                
+                  -F "filename=$filename" \
+                  -F "file=@$pdf")
+
                 if [[ $? -eq 0 ]]; then
                   echo "Successfully created record for $filename"
                   break
@@ -88,7 +89,7 @@ jobs:
                 sleep 2
               done
             else
-              recordId=$(echo "$response" | jq -r '.list[0].Id')
+              recordId=$(echo "$response" | jq -r '.data[0].id')
               
               if [[ "$recordId" == "null" ]]; then
                 echo "Error: recordId is null, skipping PATCH for $filename"
@@ -103,7 +104,8 @@ jobs:
                 response=$(curl --silent --show-error --fail --request PATCH \
                   --url "$NOCO_DB_API_URL/api/v2/tables/$NOCO_DB_TABLE_ID/records/$recordId" \
                   --header "xc-token: $NOCO_DB_API_TOKEN" \
-                  --data "{\"Опис PDF\": \"$filename\", \"PDF\": [{\"title\": \"$filename\", \"url\": \"path/to/$filename\"}]}")
+                  -F "filename=$filename" \
+                  -F "file=@$pdf")
 
                 if [[ $? -eq 0 ]]; then
                   echo "Successfully updated record for $filename"
@@ -115,3 +117,4 @@ jobs:
                 sleep 2
               done
             fi
+          done
