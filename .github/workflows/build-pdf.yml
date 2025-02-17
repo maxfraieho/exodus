@@ -28,7 +28,8 @@ jobs:
             libpangocairo-1.0-0 \
             libgdk-pixbuf2.0-0 \
             libffi-dev \
-            shared-mime-info
+            shared-mime-info \
+            jq
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -55,42 +56,26 @@ jobs:
           for pdf in src/site/notes/*.pdf; do
             filename=$(basename "$pdf")
             echo "Processing file: $filename"
-
-            # Отримуємо всі записи з таблиці
-            records=$(curl -s --request GET \
-              --url "$NOCO_DB_API_URL/api/v2/tables/$NOCO_DB_TABLE_ID/records" \
+            # URL-кодуємо ім'я файлу, щоб уникнути проблем із спецсимволами
+            encoded_filename=$(python3 -c "import urllib.parse, sys; print(urllib.parse.quote(sys.argv[1]))" "$filename")
+            # Виконуємо GET-запит для перевірки наявності запису з даним filename
+            record=$(curl -s --request GET \
+              --url "$NOCO_DB_API_URL/api/v2/tables/$NOCO_DB_TABLE_ID/records?where=filename,eq,$encoded_filename" \
               --header "xc-token: $NOCO_DB_API_TOKEN")
-
-            # Шукаємо запис за filename за допомогою Python
-            record=$(python3 -c '
-import json, sys
-records = json.loads(sys.stdin.read())
-for item in records.get("data", []):
-    if item.get("filename") == sys.argv[1]:
-        print(json.dumps(item))
-        break
-' "$filename" <<< "$records")
-
-            if [ -z "$record" ]; then
+            if echo "$record" | grep -q '"data":'; then
               echo "Record for $filename not found. Creating a new record..."
-              response=$(curl --request POST \
+              curl --request POST \
                 --url "$NOCO_DB_API_URL/api/v2/tables/$NOCO_DB_TABLE_ID/records" \
                 --header "xc-token: $NOCO_DB_API_TOKEN" \
                 -F "filename=$filename" \
-                -F "file=@$pdf")
-              echo "Response: $response"
+                -F "file=@$pdf"
             else
-              recordId=$(echo "$record" | python3 -c 'import json, sys; print(json.load(sys.stdin)["id"])')
-              if [ "$recordId" != "null" ]; then
-                echo "Record for $filename exists (ID: $recordId). Updating the record..."
-                response=$(curl --request PATCH \
-                  --url "$NOCO_DB_API_URL/api/v2/tables/$NOCO_DB_TABLE_ID/records/$recordId" \
-                  --header "xc-token: $NOCO_DB_API_TOKEN" \
-                  -F "filename=$filename" \
-                  -F "file=@$pdf")
-                echo "Response: $response"
-              else
-                echo "Error: Failed to fetch valid record ID for $filename"
-              fi
+              recordId=$(echo "$record" | jq -r '.data[0].id')
+              echo "Record for $filename exists (ID: $recordId). Updating the record..."
+              curl --request PATCH \
+                --url "$NOCO_DB_API_URL/api/v2/tables/$NOCO_DB_TABLE_ID/records/$recordId" \
+                --header "xc-token: $NOCO_DB_API_TOKEN" \
+                -F "filename=$filename" \
+                -F "file=@$pdf"
             fi
           done
