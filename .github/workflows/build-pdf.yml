@@ -53,19 +53,19 @@ jobs:
           NOCO_DB_API_TOKEN: ${{ secrets.NOCO_DB_API_KEY }}
         run: |
           echo "Processing PDF files for Noco-DB update..."
-          
+
           for pdf in src/site/notes/*.pdf; do
             filename=$(basename "$pdf")
             echo "Processing file: $filename"
-            
+
             # URL-кодуємо ім'я файлу
             encoded_filename=$(python3 -c "import urllib.parse, sys; print(urllib.parse.quote(sys.argv[1]))" "$filename")
-            
+
             # Отримуємо запис із NocoDB
             response=$(curl -s --request GET \
               --url "$NOCO_DB_API_URL/api/v2/tables/$NOCO_DB_TABLE_ID/records?where=filename,eq,$encoded_filename" \
               --header "xc-token: $NOCO_DB_API_TOKEN")
-            
+
             # Перевіряємо, чи запис існує
             if echo "$response" | jq -e '.data | length == 0' > /dev/null; then
               echo "Record for $filename not found. Creating a new record..."
