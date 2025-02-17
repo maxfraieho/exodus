@@ -43,7 +43,6 @@ jobs:
 
       - name: Generate PDFs per topic
         run: |
-          # Генеруємо PDF для кожної підпапки в src/site/notes
           printf "src/site/notes\n\n\n" | python codetomd.py
 
       - name: Update PDF records in Noco-DB
@@ -54,33 +53,68 @@ jobs:
           NOCO_DB_API_TOKEN: ${{ secrets.NOCO_DB_API_KEY }}
         run: |
           echo "Processing PDF files for Noco-DB update..."
+          
           for pdf in src/site/notes/*.pdf; do
-            filename=`${(basename "}$`pdf")
+            filename=$(basename "$pdf")
             echo "Processing file: $filename"
-            # URL-кодуємо ім'я файлу, щоб уникнути проблем з спецсимволами
-            encoded_filename=`${(python3 -c "import urllib.parse, sys; print(urllib.parse.quote(sys.argv[1]))" "}$`filename")
-            # Виконуємо GET-запит для перевірки наявності запису з даним filename
-            record=$(curl -s --request GET \
-              --url "`${NOCO_DB_API_URL/api/v2/tables/}$`NOCO_DB_TABLE_ID/records?where=filename,eq,$encoded_filename" \
+            
+            # URL-кодуємо ім'я файлу
+            encoded_filename=$(python3 -c "import urllib.parse, sys; print(urllib.parse.quote(sys.argv[1]))" "$filename")
+            
+            # Отримуємо запис із NocoDB
+            response=$(curl -s --request GET \
+              --url "$NOCO_DB_API_URL/api/v2/tables/$NOCO_DB_TABLE_ID/records?where=filename,eq,$encoded_filename" \
               --header "xc-token: $NOCO_DB_API_TOKEN")
-            if echo "$record" | jq -e '.data | length == 0' > /dev/null; then
+            
+            # Перевіряємо, чи запис існує
+            if echo "$response" | jq -e '.data | length == 0' > /dev/null; then
               echo "Record for $filename not found. Creating a new record..."
-              curl --request POST \
-                --url "`${NOCO_DB_API_URL/api/v2/tables/}$`NOCO_DB_TABLE_ID/records" \
-                --header "xc-token: $NOCO_DB_API_TOKEN" \
-                -F "filename=$filename" \
-                -F "file=@$pdf"
-            else
-              recordId=`${(echo "}$`record" | jq -r '.data[0].id')
-              if [ "$recordId" != "null" ]; then
-                echo "Record for `${filename exists (ID:}$`recordId). Updating the record..."
-                curl --request PATCH \
-                  --url "`${NOCO_DB_API_URL/api/v2/tables/}$`NOCO_DB_TABLE_ID/records/$recordId" \
+              
+              attempt=0
+              max_attempts=3
+              while [ $attempt -lt $max_attempts ]; do
+                response=$(curl --silent --show-error --fail --request POST \
+                  --url "$NOCO_DB_API_URL/api/v2/tables/$NOCO_DB_TABLE_ID/records" \
                   --header "xc-token: $NOCO_DB_API_TOKEN" \
                   -F "filename=$filename" \
-                  -F "file=@$pdf"
-              else
-                echo "Record ID is null. Skipping update for $filename."
+                  -F "file=@$pdf")
+
+                if [[ $? -eq 0 ]]; then
+                  echo "Successfully created record for $filename"
+                  break
+                fi
+                
+                attempt=$((attempt+1))
+                echo "Retrying... ($attempt/$max_attempts)"
+                sleep 2
+              done
+            else
+              recordId=$(echo "$response" | jq -r '.data[0].id')
+              
+              if [[ "$recordId" == "null" ]]; then
+                echo "Error: recordId is null, skipping PATCH for $filename"
+                continue
               fi
+              
+              echo "Record for $filename exists (ID: $recordId). Updating the record..."
+              
+              attempt=0
+              max_attempts=3
+              while [ $attempt -lt $max_attempts ]; do
+                response=$(curl --silent --show-error --fail --request PATCH \
+                  --url "$NOCO_DB_API_URL/api/v2/tables/$NOCO_DB_TABLE_ID/records/$recordId" \
+                  --header "xc-token: $NOCO_DB_API_TOKEN" \
+                  -F "filename=$filename" \
+                  -F "file=@$pdf")
+
+                if [[ $? -eq 0 ]]; then
+                  echo "Successfully updated record for $filename"
+                  break
+                fi
+                
+                attempt=$((attempt+1))
+                echo "Retrying... ($attempt/$max_attempts)"
+                sleep 2
+              done
             fi
           done
