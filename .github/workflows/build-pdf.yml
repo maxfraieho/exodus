@@ -1,4 +1,4 @@
-- name: Update PDF records in Noco-DB
+ name: Update PDF records in Noco-DB
   env:
     NOCO_DB_API_URL: "https://nocodb.soyka.pp.ua"
     NOCO_DB_TABLE_ID: "m3plh50uwtk34zd"
