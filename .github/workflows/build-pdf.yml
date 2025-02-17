@@ -1,4 +1,5 @@
 name: Generate PDF and Update Noco-DB
+
 on:
   push:
     branches:
@@ -53,18 +54,24 @@ jobs:
           for pdf in src/site/notes/*.pdf; do
             filename=$(basename "$pdf")
             echo "Processing file: $filename"
+            
+            # Get existing records
             records=$(curl -s --request GET \
               --url "$NOCO_DB_API_URL/api/v2/tables/$NOCO_DB_TABLE_ID/records" \
               --header "xc-token: $NOCO_DB_API_TOKEN")
-            record=$(cat << 'EOF' | python3 - "$filename" <<< "$records"
+            
+            # Find existing record
+            record=$(python3 - "$filename" <<EOF
 import json, sys
+filename = sys.argv[1]
 records = json.loads(sys.stdin.read())
 for item in records.get('data', []):
-    if item.get('filename') == sys.argv[1]:
+    if item.get('filename') == filename:
         print(json.dumps(item))
         break
 EOF
 )
+            
             if [ -z "$record" ]; then
               echo "Record for $filename not found. Creating a new record..."
               response=$(curl --request POST \
@@ -74,11 +81,8 @@ EOF
                 -F "file=@$pdf")
               echo "Response: $response"
             else
-              recordId=$(cat << 'EOF' | python3 - <<< "$record"
-import json, sys
-print(json.load(sys.stdin)['id'])
-EOF
-)
+              recordId=$(echo "$record" | python3 -c "import json,sys; print(json.load(sys.stdin)['id'])")
+              
               if [ "$recordId" != "null" ]; then
                 echo "Record for $filename exists (ID: $recordId). Updating the record..."
                 response=$(curl --request PATCH \
