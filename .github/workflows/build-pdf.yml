@@ -1,4 +1,4 @@
-name: Generate PDF and Upload to MinIO via Cloudflare Tunnel
+name: Generate PDF and Upload to MinIO via Cloudflare (one-by-one, put-object)
 
 on:
   push:
@@ -15,6 +15,7 @@ on:
 jobs:
   generate-and-upload:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -59,12 +60,16 @@ jobs:
           aws configure set aws_access_key_id "$AWS_ACCESS_KEY_ID"
           aws configure set aws_secret_access_key "$AWS_SECRET_ACCESS_KEY"
           aws configure set default.region us-east-1
+          # path-style потрібен для MinIO, щоб уникнути редіректів
           aws configure set default.s3.addressing_style path
 
-      - name: Upload PDFs (with transliteration) to MinIO
+      - name: Upload PDFs to MinIO (put-object, transliteration)
+        env:
+          # Вимкнути multipart, щоб уникнути chunked-uploads (Cloudflare іноді з цим має проблеми)
+          AWS_S3_DISABLE_MULTIPART: "1"
         shell: bash
         run: |
-          echo "Uploading PDF files to MinIO bucket via Cloudflare Tunnel (one-by-one, with transliteration)..."
+          echo "Uploading PDF files to MinIO via Cloudflare Tunnel (using s3api put-object, one-by-one)"
 
           # Знайти всі PDF у каталозі src/site/notes
           mapfile -t pdf_files < <(find src/site/notes -type f -iname "*.pdf")
@@ -72,23 +77,22 @@ jobs:
           for pdf in "${pdf_files[@]}"; do
             orig_name="$(basename "$pdf")"
 
-            # Транслітерація через низку sed-замін (кирилиця -> латиниця),
-            # потім iconv (видалить "складні" символи) і тримемо лише [[:alnum:]._-].
+            # Транслітеруємо ім'я файлу
             safe_name="$(
               echo "$orig_name" \
                 | sed -E '
-                  s/щ/shch/g;  s/ш/sh/g;   s/ч/ch/g;   s/ц/ts/g;   s/х/kh/g;
-                  s/ю/yu/g;    s/я/ya/g;   s/ж/zh/g;   s/ї/yi/g;   s/і/i/g;
-                  s/є/ye/g;    s/ґ/g/g;    s/ё/yo/g;   s/ъ//g;     s/ь//g;
-                  s/ы/y/g;     s/э/e/g;    s/…/.../g; s/«//g;      s/»//g;
-                  s/А/A/g;     s/Б/B/g;    s/В/V/g;    s/Г/H/g;    s/Ґ/G/g;
-                  s/Д/D/g;     s/Е/E/g;    s/Є/Ye/g;   s/Ж/Zh/g;   s/З/Z/g;
-                  s/И/Y/g;     s/І/I/g;    s/Ї/Yi/g;   s/Й/Y/g;    s/К/K/g;
-                  s/Л/L/g;     s/М/M/g;    s/Н/N/g;    s/О/O/g;    s/П/P/g;
-                  s/Р/R/g;     s/С/S/g;    s/Т/T/g;    s/У/U/g;    s/Ф/F/g;
-                  s/Х/Kh/g;    s/Ц/Ts/g;   s/Ч/Ch/g;   s/Ш/Sh/g;   s/Щ/Shch/g;
-                  s/Ю/Yu/g;    s/Я/Ya/g;   s/Ё/Yo/g;   s/Ъ//g;     s/Ь//g; 
-                  s/Ы/Y/g;     s/Э/E/g; 
+                  s/щ/shch/g; s/ш/sh/g;   s/ч/ch/g;   s/ц/ts/g;   s/х/kh/g;
+                  s/ю/yu/g;  s/я/ya/g;   s/ж/zh/g;   s/ї/yi/g;   s/і/i/g;
+                  s/є/ye/g;  s/ґ/g/g;    s/ё/yo/g;   s/ъ//g;     s/ь//g;
+                  s/ы/y/g;   s/э/e/g;    s/…/.../g; s/«//g;      s/»//g;
+                  s/А/A/g;   s/Б/B/g;    s/В/V/g;    s/Г/H/g;    s/Ґ/G/g;
+                  s/Д/D/g;   s/Е/E/g;    s/Є/Ye/g;   s/Ж/Zh/g;   s/З/Z/g;
+                  s/И/Y/g;   s/І/I/g;    s/Ї/Yi/g;   s/Й/Y/g;    s/К/K/g;
+                  s/Л/L/g;   s/М/M/g;    s/Н/N/g;    s/О/O/g;    s/П/P/g;
+                  s/Р/R/g;   s/С/S/g;    s/Т/T/g;    s/У/U/g;    s/Ф/F/g;
+                  s/Х/Kh/g;  s/Ц/Ts/g;   s/Ч/Ch/g;   s/Ш/Sh/g;   s/Щ/Shch/g;
+                  s/Ю/Yu/g;  s/Я/Ya/g;   s/Ё/Yo/g;   s/Ъ//g;     s/Ь//g;
+                  s/Ы/Y/g;   s/Э/E/g; 
                 ' \
                 | iconv -f UTF-8 -t ASCII//TRANSLIT//IGNORE \
                 | tr -cd '[:alnum:]._-' 
@@ -97,17 +101,21 @@ jobs:
             echo "→ Original: $orig_name"
             echo "→ Transliterated: $safe_name"
 
-            # Завантажити в MinIO окремим викликом aws s3 cp
+            # Використовуємо s3api put-object (не s3 cp/sync!)
+            # Додаємо таймаути на випадок зависань
             aws --endpoint-url http://apiminio.exodus.pp.ua \
-                s3 cp "$pdf" "s3://exodusbase/$safe_name" \
+                s3api put-object \
+                --bucket exodusbase \
+                --key "$safe_name" \
+                --body "$pdf" \
+                --content-type application/pdf \
                 --cli-read-timeout 360 \
                 --cli-connect-timeout 360
 
-            # Перевірка виходу команди
             if [[ $? -ne 0 ]]; then
               echo "Помилка під час завантаження: $orig_name"
               exit 1
             fi
           done
 
-          echo "Успішне завершення завантаження PDF-файлів."
+          echo "Успішно завантажено PDF-файли."
