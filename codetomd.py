@@ -9,7 +9,7 @@ from pathlib import Path
 def find_markdown_and_images(root_dir, ignore_dirs=None, image_extensions=None):
     """
     Повертає кортеж (list_md_files, set_image_paths), де:
-      - list_md_files: список шляхів до файлів .md;
+      - list_md_files: список шляхів до файлів .md (з усіх підпапок);
       - set_image_paths: множина шляхів до зображень, на які посилаються у Markdown.
     """
     if ignore_dirs is None:
@@ -30,9 +30,11 @@ def find_markdown_and_images(root_dir, ignore_dirs=None, image_extensions=None):
             if ext == '.md':
                 list_md_files.append(full_file_path)
 
-    # Знаходимо посилання на зображення в Markdown-файлах
-    # (якщо потрібно, можна поправити регулярний вираз до стандартного формату: r'!.*?([^)]+)')
-    image_pattern = re.compile(r'!.*?([^)]+)')
+    # Обробка стандартних Markdown-зображень: ![alt](image.png)
+    std_image_pattern = re.compile(r'!\[.*?\]\(([^)]+)\)')
+    # Обробка Obsidian-синтаксису: ![[image.png]] або ![[image.png|alt text]]
+    obsidian_image_pattern = re.compile(r'!\[\[([^|\]]+)(?:\|[^\]]+)?\]\]')
+
     for md_path in list_md_files:
         try:
             with open(md_path, 'r', encoding='utf-8') as md_file:
@@ -41,19 +43,29 @@ def find_markdown_and_images(root_dir, ignore_dirs=None, image_extensions=None):
             print(f"Не вдалося прочитати {md_path}: {e}")
             continue
 
-        matches = image_pattern.findall(content)
-        for img_src in matches:
-            # Пропускаємо абсолютні URL (http/https) або data URI
-            if not (img_src.startswith('http') or img_src.startswith("data:")):
+        # Знаходимо стандартні зображення
+        std_matches = std_image_pattern.findall(content)
+        for img_src in std_matches:
+            if not (img_src.startswith("http") or img_src.startswith("data:")):
                 _, img_ext = os.path.splitext(img_src.lower())
                 if img_ext in image_extensions:
                     full_img_path = os.path.normpath(os.path.join(os.path.dirname(md_path), img_src))
                     set_image_paths.add(full_img_path)
+
+        # Знаходимо зображення у форматі Obsidian
+        obsidian_matches = obsidian_image_pattern.findall(content)
+        for img_src in obsidian_matches:
+            if not (img_src.startswith("http") or img_src.startswith("data:")):
+                _, img_ext = os.path.splitext(img_src.lower())
+                if img_ext in image_extensions:
+                    full_img_path = os.path.normpath(os.path.join(os.path.dirname(md_path), img_src))
+                    set_image_paths.add(full_img_path)
+
     return list_md_files, set_image_paths
 
 def convert_markdown_files_to_combined_html(md_files):
     """
-    Конвертує кожен Markdown-файл у HTML, виправляє відносні посилання на зображення 
+    Конвертує кожен Markdown-файл у HTML, коригує відносні посилання на зображення 
     (перетворюючи їх у абсолютні file URI) та об'єднує результати в один HTML-документ.
     """
     combined_html = (
@@ -77,10 +89,10 @@ def convert_markdown_files_to_combined_html(md_files):
             src = img.get("src")
             if src and not (src.startswith("http") or src.startswith("data:")):
                 abs_img_path = os.path.normpath(os.path.join(md_dir, src))
-                # Перетворюємо у file URI (це дозволяє WeasyPrint завантажувати зображення з локальної файлової системи)
+                # Перетворюємо у file URI (це дозволяє WeasyPrint завантажувати зображення з файлової системи)
                 img["src"] = Path(abs_img_path).as_uri()
         html_fragment = str(soup)
-        # Додаємо фрагмент до загального HTML із горизонтальною лінією як роздільником (з можливим розривом сторінки)
+        # Додаємо фрагмент до загального HTML із розділювальною горизонтальною лінією
         combined_html += html_fragment
         combined_html += "<hr style='page-break-after: always; border: none;'>"
     combined_html += "</body></html>"
@@ -89,8 +101,7 @@ def convert_markdown_files_to_combined_html(md_files):
 def main():
     print("=== Генеруємо PDF для кожної підпапки з Markdown ===\n")
     
-    # Встановлюємо базову директорію. За замовчуванням використовуємо "src/site/notes" 
-    # відносно розташування скрипту.
+    # Встановлюємо базову директорію. За замовчуванням використовуємо "src/site/notes"
     script_dir = os.path.dirname(os.path.abspath(__file__))
     default_base_dir = os.path.join(script_dir, "src/site/notes")
     base_dir = input(f"Введіть шлях до базової директорії з нотатками (за замовчуванням {default_base_dir}): ").strip() or default_base_dir
@@ -115,7 +126,7 @@ def main():
         folder_name = os.path.basename(subdir)
         print(f"\nОбробка папки: {subdir}")
         
-        # Знаходимо Markdown-файли в поточній підпапці
+        # Знаходимо Markdown-файли у поточній підпапці (рекурсивно)
         md_files, img_paths = find_markdown_and_images(
             root_dir=subdir,
             ignore_dirs={'.git', 'node_modules', 'venv', 'dist', '__pycache__'}.union(additional_ignore),
