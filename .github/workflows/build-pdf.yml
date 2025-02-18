@@ -48,93 +48,93 @@ jobs:
       - name: Update PDF records in Noco-DB
         env:
           NOCO_DB_API_URL: "https://nocodb.soyka.pp.ua"
-          NOCO_DB_TABLE_ID: "mo1skyako59jzjh"    # Перевірте, що це правильний ідентифікатор таблиці
-          NOCO_DB_VIEW_ID: "vw2u02w5djy06gxg"    # Перевірте, що це правильний ідентифікатор view
+          NOCO_DB_TABLE_ID: "mdb4f2t1ngchrom"
+          NOCO_DB_VIEW_ID: "vwknikxbrl1mobu9"
           NOCO_DB_API_TOKEN: ${{ secrets.NOCO_DB_API_KEY }}
+          ATTACHMENT_FIELD_ID: "cyl3kusky2kreq3"  # ID поля для прикріплень
         run: |
           echo "Закидаємо PDF files for Noco-DB update..."
 
           for pdf in src/site/notes/*.pdf; do
-            # 1) Оригінальна назва файлу
-            original_name=$(basename "$pdf")
-
-            # 2) Транслітерація кирилиці -> латиниця
-            translit_name=$(echo "$original_name" | sed '
+            # Транслітерація кирилиці в латиницю
+            filename=$(basename "$pdf" | sed '
               y/абвгґдеєжзиіїйклмнопрстуфхцчшщюяьАБВГҐДЕЄЖЗИІЇЙКЛМНОПРСТУФХЦЧШЩЮЯЬ/abvhgdeyezhzyiijklmnoprstufxczchshshchyuyaABVHGDEYeZhZYIIJKLmnoprstufxczchshshchYUYa/;
               s/ё/yo/g; s/ъ//g; s/ы/y/g; s/э/e/g; s/Ё/Yo/g; s/Ъ//g; s/Ы/Y/g; s/Э/E/g;
             ' | iconv -f UTF-8 -t ASCII//TRANSLIT//IGNORE | tr -cd '[:alnum:]._-' | tr ' ' '_')
 
-            echo "Оригінальне ім'я: $original_name => транслітероване: $translit_name"
-
-            # 3) Формуємо where=(title,eq,<translit_name>) в один рядок, URL-кодовано
-            where=$(python3 -c "import urllib.parse, sys; val=sys.argv[1]; f='(title,eq,'+val+')'; print(urllib.parse.quote(f))" "$translit_name")
-
-            # 4) GET-запит для пошуку запису
+            echo "Оригінальне ім'я: $(basename "$pdf"), транслітероване ім'я: $filename"
+            
+            # Кодовано параметр пошуку
+            where=$(python3 -c "import urllib.parse, sys; print(urllib.parse.quote('filename,eq,' + sys.argv[1]))" "$filename")
+            
+            # Пошук запису за filename з параметрами offset, limit та viewId
             response=$(curl -s --request GET \
               --url "$NOCO_DB_API_URL/api/v2/tables/$NOCO_DB_TABLE_ID/records?where=$where&offset=0&limit=25&viewId=$NOCO_DB_VIEW_ID" \
               --header "xc-token: $NOCO_DB_API_TOKEN")
-
-            # 5) Спробуємо дістати кількість записів (поле .list)
-            record_count=$(echo "$response" | jq '.list | length' 2>/dev/null)
-
-            # Якщо .list не масив або null - підстраховка
-            if [ -z "$record_count" ] || ! [[ "$record_count" =~ ^[0-9]+$ ]]; then
-              echo "Отримано некоректну відповідь (можливо, INVALID_FILTER). Відповідь:"
-              echo "$response"
-              continue
-            fi
-
-            if [ "$record_count" -eq 0 ]; then
-              echo "Створюємо новий запис (title='$translit_name')..."
+            
+            if echo "$response" | jq -e '.data | length == 0' > /dev/null; then
+              echo "Створення нового запису для $filename..."
               
               attempt=0
               max_attempts=3
               while [ $attempt -lt $max_attempts ]; do
-                result=$(curl --silent --show-error --fail --request POST \
+                response=$(curl --silent --show-error --fail --request POST \
                   --url "$NOCO_DB_API_URL/api/v2/tables/$NOCO_DB_TABLE_ID/records" \
                   --header "xc-token: $NOCO_DB_API_TOKEN" \
-                  -F "title=$translit_name" \
-                  -F "Attachment=@$pdf;filename=$translit_name")
-
+                  -F "filename=$filename" \
+                  -F "$ATTACHMENT_FIELD_ID=@$pdf")
+            
                 if [[ $? -eq 0 ]]; then
-                  echo "Успішно створено (title='$translit_name')."
+                  echo "Успішно створено запис для $filename"
                   break
-                else
-                  attempt=$((attempt+1))
-                  echo "Помилка створення. Повторна спроба... ($attempt/$max_attempts)"
-                  sleep 20
                 fi
+                
+                attempt=$((attempt+1))
+                echo "Повторна спроба... ($attempt/$max_attempts)"
+                sleep 20
               done
 
-            else
-              # Якщо запис уже існує, беремо Id першого запису
-              recordId=$(echo "$response" | jq -r '.list[0].Id')
-
-              if [ "$recordId" == "null" ] || [ -z "$recordId" ]; then
-                echo "Не вдалося отримати recordId. Відповідь:"
+              # Debugging information for failures
+              if [[ $? -ne 0 ]]; then
+                echo "Помилка при створенні запису для $filename. Відповідь сервера:"
                 echo "$response"
-                continue
               fi
 
-              echo "Оновлюємо запис (Id=$recordId, title='$translit_name')..."
-
+            else
+              recordId=$(echo "$response" | jq -r '.data[0].id')
+              
+              if [[ "$recordId" == "null" ]]; then
+                echo "Помилка: recordId відсутній, пропускаємо $filename"
+                continue
+              fi
+              
+              echo "Оновлення існуючого запису $recordId для $filename..."
+              
               attempt=0
               max_attempts=3
               while [ $attempt -lt $max_attempts ]; do
-                result=$(curl --silent --show-error --fail --request PATCH \
+                response=$(curl --silent --show-error --fail --request PATCH \
                   --url "$NOCO_DB_API_URL/api/v2/tables/$NOCO_DB_TABLE_ID/records/$recordId" \
                   --header "xc-token: $NOCO_DB_API_TOKEN" \
-                  -F "title=$translit_name" \
-                  -F "Attachment=@$pdf;filename=$translit_name")
-
+                  -F "filename=$filename" \
+                  -F "$ATTACHMENT_FIELD_ID=@$pdf")
+            
                 if [[ $? -eq 0 ]]; then
-                  echo "Успішно оновлено (Id=$recordId)."
+                  echo "Успішно оновлено запис для $filename"
                   break
-                else
-                  attempt=$((attempt+1))
-                  echo "Помилка оновлення. Повторна спроба... ($attempt/$max_attempts)"
-                  sleep 20
                 fi
+                
+                attempt=$((attempt+1))
+                echo "Повторна спроба... ($attempt/$max_attempts)"
+                sleep 20
               done
+
+              # Debugging information for failures
+              if [[ $? -ne 0 ]]; then
+                echo "Помилка при оновленні запису для $filename. Відповідь сервера:"
+                echo "$response"
+              fi
+
             fi
-          done
+            
+          done          
