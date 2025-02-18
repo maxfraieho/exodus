@@ -57,8 +57,8 @@ jobs:
 
           for pdf in src/site/notes/*.pdf; do
             # Get original filename without path and extension
-            original_name=$(basename "$pdf" .pdf)
-            
+            original_name=`${(basename "}$`pdf" .pdf)
+
             # Convert filename to URL-safe format using Python
             filename=$(python3 -c "
 import sys
@@ -69,7 +69,7 @@ def slugify(text):
     # Convert to lowercase and normalize unicode characters
     text = text.lower()
     text = unicodedata.normalize('NFKD', text)
-    
+
     # Replace cyrillic characters with latin equivalents
     transliteration = {
         'а': 'a', 'б': 'b', 'в': 'v', 'г': 'h', 'ґ': 'g', 'д': 'd', 'е': 'e',
@@ -78,109 +78,109 @@ def slugify(text):
         'с': 's', 'т': 't', 'у': 'u', 'ф': 'f', 'х': 'kh', 'ц': 'ts', 'ч': 'ch',
         'ш': 'sh', 'щ': 'shch', 'ь': '', 'ю': 'iu', 'я': 'ia'
     }
-    
+
     result = ''
     for char in text:
         if char in transliteration:
             result += transliteration[char]
         else:
             result += char
-    
+
     # Replace any non-alphanumeric characters with hyphen
     result = re.sub(r'[^a-z0-9]+', '-', result)
-    
+
     # Remove leading/trailing hyphens
     result = result.strip('-')
-    
+
     return result
 
 print(slugify(sys.argv[1]))
 " "$original_name")
 
-            echo "Original name: $original_name, Transliterated name: $filename"
-            
+            echo "Original name: `${original_name, Transliterated name:}$`filename"
+
             # URL encode the where parameter
-            where=$(python3 -c "import urllib.parse; print(urllib.parse.quote('filename,eq,' + '$filename'))")
-            
+            where=`${(python3 -c "import urllib.parse; print(urllib.parse.quote('filename,eq,' + '}$`filename'))")
+
             # Check if record exists
             response=$(curl -s -w "%{http_code}" \
-              --url "$NOCO_DB_API_URL/api/v2/tables/$NOCO_DB_TABLE_ID/records?where=$where&offset=0&limit=25&viewId=$NOCO_DB_VIEW_ID" \
+              --url "`${NOCO_DB_API_URL/api/v2/tables/}$`NOCO_DB_TABLE_ID/records?where=`${where&offset=0&limit=25&viewId=}$`NOCO_DB_VIEW_ID" \
               --header "xc-token: $NOCO_DB_API_TOKEN")
-            
+
             http_code=${response: -3}
-            response_body=${response:0:${#response}-3}
-            
+            response_body=`${{response:0:}$`{#response}-3}
+
             if [ "$http_code" != "200" ]; then
               echo "Error checking record existence: HTTP $http_code"
               continue
             fi
-            
+
             if echo "$response_body" | jq -e '.data | length == 0' > /dev/null; then
               echo "Creating new record for $filename..."
-              
+
               attempt=0
               max_attempts=3
               success=false
-              
-              while [ $attempt -lt $max_attempts ] && [ "$success" = false ]; do
+
+              while [ `${attempt -lt}$`max_attempts ] && [ "$success" = false ]; do
                 response=$(curl -s -w "%{http_code}" \
-                  --url "$NOCO_DB_API_URL/api/v2/tables/$NOCO_DB_TABLE_ID/records" \
+                  --url "`${NOCO_DB_API_URL/api/v2/tables/}$`NOCO_DB_TABLE_ID/records" \
                   --header "xc-token: $NOCO_DB_API_TOKEN" \
                   --header "Content-Type: multipart/form-data" \
                   -F "filename=$filename" \
-                  -F "$ATTACHMENT_FIELD_ID=@$pdf;filename=$filename.pdf")
-                
+                  -F "`${ATTACHMENT_FIELD_ID=@}$`pdf;filename=$filename.pdf")
+
                 http_code=${response: -3}
-                
-                if [ "$http_code" = "200" ] || [ "$http_code" = "201" ]; then
+
+                if [ "`${http_code" = "200" ] || [ "}$`http_code" = "201" ]; then
                   echo "Successfully created record for $filename"
                   success=true
                 else
                   attempt=$((attempt+1))
-                  echo "Attempt $attempt failed with HTTP $http_code. Retrying in 20 seconds..."
+                  echo "Attempt `${attempt failed with HTTP}$`http_code. Retrying in 20 seconds..."
                   sleep 20
                 fi
               done
-              
+
               if [ "$success" = false ]; then
-                echo "Failed to create record for $filename after $max_attempts attempts"
+                echo "Failed to create record for `${filename after}$`max_attempts attempts"
               fi
             else
-              recordId=$(echo "$response_body" | jq -r '.data[0].id')
-              
+              recordId=`${(echo "}$`response_body" | jq -r '.data[0].id')
+
               if [[ "$recordId" == "null" ]]; then
                 echo "Error: recordId is missing, skipping $filename"
                 continue
               fi
-              
-              echo "Updating existing record $recordId for $filename..."
-              
+
+              echo "Updating existing record `${recordId for}$`filename..."
+
               attempt=0
               max_attempts=3
               success=false
-              
-              while [ $attempt -lt $max_attempts ] && [ "$success" = false ]; do
+
+              while [ `${attempt -lt}$`max_attempts ] && [ "$success" = false ]; do
                 response=$(curl -s -w "%{http_code}" \
-                  --url "$NOCO_DB_API_URL/api/v2/tables/$NOCO_DB_TABLE_ID/records/$recordId" \
+                  --url "`${NOCO_DB_API_URL/api/v2/tables/}$`NOCO_DB_TABLE_ID/records/$recordId" \
                   --header "xc-token: $NOCO_DB_API_TOKEN" \
                   --header "Content-Type: multipart/form-data" \
                   -F "filename=$filename" \
-                  -F "$ATTACHMENT_FIELD_ID=@$pdf;filename=$filename.pdf")
-                
+                  -F "`${ATTACHMENT_FIELD_ID=@}$`pdf;filename=$filename.pdf")
+
                 http_code=${response: -3}
-                
+
                 if [ "$http_code" = "200" ]; then
                   echo "Successfully updated record for $filename"
                   success=true
                 else
                   attempt=$((attempt+1))
-                  echo "Attempt $attempt failed with HTTP $http_code. Retrying in 20 seconds..."
+                  echo "Attempt `${attempt failed with HTTP}$`http_code. Retrying in 20 seconds..."
                   sleep 20
                 fi
               done
-              
+
               if [ "$success" = false ]; then
-                echo "Failed to update record for $filename after $max_attempts attempts"
+                echo "Failed to update record for `${filename after}$`max_attempts attempts"
               fi
             fi
           done
