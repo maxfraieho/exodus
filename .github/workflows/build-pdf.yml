@@ -94,7 +94,6 @@ jobs:
                   s/Ю/Yu/g;  s/Я/Ya/g;   s/Ё/Yo/g;   s/Ъ//g;     s/Ь//g;
                   s/Ы/Y/g;   s/Э/E/g; 
                 ' \
-                | iconv -f UTF-8 -t ASCII//TRANSLIT//IGNORE \
                 | tr -cd '[:alnum:]._-' 
             )"
 
