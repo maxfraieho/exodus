@@ -54,6 +54,7 @@ jobs:
 
       - name: Configure AWS CLI for MinIO via Cloudflare
         env:
+          # Краще зберігати секрети в GitHub Secrets, це приклад
           AWS_ACCESS_KEY_ID: 77icD4OgvRKPKF198eiC
           AWS_SECRET_ACCESS_KEY: B3kWQMmF4zZLb9W6dboJrdDQAMWBrVyAG4ySFBIx
         run: |
@@ -63,7 +64,7 @@ jobs:
           # path-style потрібен для MinIO, щоб уникнути редіректів
           aws configure set default.s3.addressing_style path
 
-      - name: Upload PDFs to MinIO (put-object, transliteration)
+      - name: Upload PDFs to MinIO (put-object, simple rename)
         env:
           # Вимкнути multipart, щоб уникнути chunked-uploads (Cloudflare іноді з цим має проблеми)
           AWS_S3_DISABLE_MULTIPART: "1"
@@ -77,28 +78,17 @@ jobs:
           for pdf in "${pdf_files[@]}"; do
             orig_name="$(basename "$pdf")"
 
-            # Транслітеруємо ім'я файлу (кирилиця/діакритика -> латиниця/ASCII)
+            # 1) Залишаємо літери (лат/кир), цифри, . _ - і пробіли
+            # 2) Видаляємо інші спецсимволи
+            # 3) Пробіли замінюємо на дефіси
             safe_name="$(
               echo "$orig_name" \
-                | sed -E '
-                  s/щ/shch/g; s/ш/sh/g;   s/ч/ch/g;   s/ц/ts/g;   s/х/kh/g;
-                  s/ю/yu/g;  s/я/ya/g;   s/ж/zh/g;   s/ї/yi/g;   s/і/i/g;
-                  s/є/ye/g;  s/ґ/g/g;    s/ё/yo/g;   s/ъ//g;     s/ь//g;
-                  s/ы/y/g;   s/э/e/g;    s/…/.../g; s/«//g;      s/»//g;
-                  s/А/A/g;   s/Б/B/g;    s/В/V/g;    s/Г/H/g;    s/Ґ/G/g;
-                  s/Д/D/g;   s/Е/E/g;    s/Є/Ye/g;   s/Ж/Zh/g;   s/З/Z/g;
-                  s/И/Y/g;   s/І/I/g;    s/Ї/Yi/g;   s/Й/Y/g;    s/К/K/g;
-                  s/Л/L/g;   s/М/M/g;    s/Н/N/g;    s/О/O/g;    s/П/P/g;
-                  s/Р/R/g;   s/С/S/g;    s/Т/T/g;    s/У/U/g;    s/Ф/F/g;
-                  s/Х/Kh/g;  s/Ц/Ts/g;   s/Ч/Ch/g;   s/Ш/Sh/g;   s/Щ/Shch/g;
-                  s/Ю/Yu/g;  s/Я/Ya/g;   s/Ё/Yo/g;   s/Ъ//g;     s/Ь//g;
-                  s/Ы/Y/g;   s/Э/E/g; 
-                ' \
-                | tr -cd '[:alnum:]._-' 
+                | sed -E 's/[^[:alnum:]А-Яа-яЁёІіЇїЄєҐґ._\- ]//g' \
+                | sed 's/ /-/g'
             )"
 
             echo "→ Original: $orig_name"
-            echo "→ Transliterated: $safe_name"
+            echo "→ Cleaned : $safe_name"
 
             # Використовуємо s3api put-object (не s3 cp/sync!)
             # Звертаємося до HTTPS (Cloudflare примушує HTTPS інакше recursion depth error)
