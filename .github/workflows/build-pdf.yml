@@ -59,11 +59,12 @@ jobs:
             filename=$(basename "$pdf")
             echo "Processing file: $filename"
 
-            encoded_filename=$(python3 -c "import urllib.parse, sys; print(urllib.parse.quote(sys.argv[1]))" "$filename")
+            # Кодовано увесь параметр умови пошуку, включно з "filename,eq,"
+            where=$(python3 -c "import urllib.parse, sys; print(urllib.parse.quote('filename,eq,' + sys.argv[1]))" "$filename")
 
             # Пошук запису за filename з параметрами offset, limit та viewId
             response=$(curl -s --request GET \
-              --url "$NOCO_DB_API_URL/api/v2/tables/$NOCO_DB_TABLE_ID/records?where=filename,eq,$encoded_filename&offset=0&limit=25&viewId=$NOCO_DB_VIEW_ID" \
+              --url "$NOCO_DB_API_URL/api/v2/tables/$NOCO_DB_TABLE_ID/records?where=$where&offset=0&limit=25&viewId=$NOCO_DB_VIEW_ID" \
               --header "xc-token: $NOCO_DB_API_TOKEN")
 
             if echo "$response" | jq -e '.data | length == 0' > /dev/null; then
