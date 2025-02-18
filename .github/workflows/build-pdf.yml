@@ -56,17 +56,22 @@ jobs:
           echo "Закидаємо PDF files for Noco-DB update..."
 
           for pdf in src/site/notes/*.pdf; do
-            filename=$(basename "$pdf")
-            echo "Processing file: $filename"
-
-            # Кодовано увесь параметр умови пошуку, включно з "filename,eq,"
+            # Транслітерація кирилиці в латиницю
+            filename=$(basename "$pdf" | sed '
+              y/абвгґдеєжзиіїйклмнопрстуфхцчшщюяьАБВГҐДЕЄЖЗИІЇЙКЛМНОПРСТУФХЦЧШЩЮЯЬ/abvhgdeyezhzyiijklmnoprstufxczchshshchyuyaABVHGDEYeZhZYIIJKLmnoprstufxczchshshchYUYa/;
+              s/ё/yo/g; s/ъ//g; s/ы/y/g; s/э/e/g; s/Ё/Yo/g; s/Ъ//g; s/Ы/Y/g; s/Э/E/g;
+            ' | iconv -f UTF-8 -t ASCII//TRANSLIT//IGNORE | tr -cd '[:alnum:]._-' | tr ' ' '_')
+            
+            echo "Оригінальне ім'я: $(basename "$pdf"), транслітероване ім'я: $filename"
+            
+            # Кодовано параметр пошуку
             where=$(python3 -c "import urllib.parse, sys; print(urllib.parse.quote('filename,eq,' + sys.argv[1]))" "$filename")
-
+            
             # Пошук запису за filename з параметрами offset, limit та viewId
             response=$(curl -s --request GET \
               --url "$NOCO_DB_API_URL/api/v2/tables/$NOCO_DB_TABLE_ID/records?where=$where&offset=0&limit=25&viewId=$NOCO_DB_VIEW_ID" \
               --header "xc-token: $NOCO_DB_API_TOKEN")
-
+            
             if echo "$response" | jq -e '.data | length == 0' > /dev/null; then
               echo "Створення нового запису для $filename..."
               
@@ -78,7 +83,7 @@ jobs:
                   --header "xc-token: $NOCO_DB_API_TOKEN" \
                   -F "filename=$filename" \
                   -F "$ATTACHMENT_FIELD_ID=@$pdf")
-
+            
                 if [[ $? -eq 0 ]]; then
                   echo "Успішно створено запис для $filename"
                   break
@@ -106,7 +111,7 @@ jobs:
                   --header "xc-token: $NOCO_DB_API_TOKEN" \
                   -F "filename=$filename" \
                   -F "$ATTACHMENT_FIELD_ID=@$pdf")
-
+            
                 if [[ $? -eq 0 ]]; then
                   echo "Успішно оновлено запис для $filename"
                   break
