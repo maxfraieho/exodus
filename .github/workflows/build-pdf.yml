@@ -60,7 +60,7 @@ jobs:
           aws configure set aws_secret_access_key $AWS_SECRET_ACCESS_KEY
           aws configure set default.region us-east-1
 
-      - name: Upload PDFs to MinIO bucket via Cloudflare Tunnel
+      - name: Upload PDF files to MinIO bucket via Cloudflare Tunnel using sync
         run: |
           echo "Uploading PDF files to MinIO bucket via Cloudflare Tunnel..."
-          aws --endpoint-url http://apiminio.exodus.pp.ua s3 cp src/site/notes/ s3://exodusbase/ --recursive
+          aws --endpoint-url http://apiminio.exodus.pp.ua s3 sync src/site/notes/ s3://exodusbase/ --exclude "*" --include "*.pdf"
