@@ -20,21 +20,29 @@ def find_markdown_and_images(root_dir, ignore_dirs=None, image_extensions=None):
     list_md_files = []
     set_image_paths = set()
 
-    # Рекурсивний обхід директорії
+    # Спочатку додаємо файли з кореневої директорії
+    for file_name in os.listdir(root_dir):
+        full_file_path = os.path.join(root_dir, file_name)
+        if os.path.isfile(full_file_path) and file_name.lower().endswith('.md'):
+            list_md_files.append(full_file_path)
+
+    # Потім рекурсивний обхід піддиректорій
     for current_path, dirs, files in os.walk(root_dir):
+        # Пропускаємо кореневу директорію, оскільки ми вже обробили її
+        if current_path == root_dir:
+            continue
+        
         # Фільтруємо директорії для ігнорування
         dirs[:] = [d for d in dirs if d not in ignore_dirs and not d.startswith('.')]
         for file_name in files:
             full_file_path = os.path.join(current_path, file_name)
-            _, ext = os.path.splitext(file_name.lower())
-            if ext == '.md':
+            if file_name.lower().endswith('.md'):
                 list_md_files.append(full_file_path)
 
-    # Обробка стандартних Markdown-зображень: ![alt](image.png)
-    std_image_pattern = re.compile(r'!\[.*?\]\(([^)]+)\)')
-    # Обробка Obsidian-синтаксису: ![[image.png]] або ![[image.png|alt text]]
-    obsidian_image_pattern = re.compile(r'!\[\[([^|\]]+)(?:\|[^\]]+)?\]\]')
+    # Сортуємо файли за шляхом для послідовного порядку
+    list_md_files.sort()
 
+    # Сканування файлів на наявність зображень
     for md_path in list_md_files:
         try:
             with open(md_path, 'r', encoding='utf-8') as md_file:
@@ -43,18 +51,18 @@ def find_markdown_and_images(root_dir, ignore_dirs=None, image_extensions=None):
             print(f"Не вдалося прочитати {md_path}: {e}")
             continue
 
-        # Знаходимо стандартні зображення
-        std_matches = std_image_pattern.findall(content)
-        for img_src in std_matches:
+        # Пошук зображень у стандартному форматі Markdown
+        for match in re.finditer(r'!\[([^\]]*)\]\(([^)]+)\)', content):
+            img_src = match.group(2)
             if not (img_src.startswith("http") or img_src.startswith("data:")):
                 _, img_ext = os.path.splitext(img_src.lower())
                 if img_ext in image_extensions:
                     full_img_path = os.path.normpath(os.path.join(os.path.dirname(md_path), img_src))
                     set_image_paths.add(full_img_path)
 
-        # Знаходимо зображення у форматі Obsidian
-        obsidian_matches = obsidian_image_pattern.findall(content)
-        for img_src in obsidian_matches:
+        # Пошук зображень у форматі Obsidian
+        for match in re.finditer(r'!\[\[([^|\]]+)(?:\|[^\]]+)?\]\]', content):
+            img_src = match.group(1)
             if not (img_src.startswith("http") or img_src.startswith("data:")):
                 _, img_ext = os.path.splitext(img_src.lower())
                 if img_ext in image_extensions:
@@ -63,55 +71,96 @@ def find_markdown_and_images(root_dir, ignore_dirs=None, image_extensions=None):
 
     return list_md_files, set_image_paths
 
+def process_markdown_content(content, base_path):
+    """
+    Обробляє markdown-контент: конвертує у HTML та виправляє шляхи до зображень
+    """
+    # Конвертуємо Markdown у HTML
+    html = markdown.markdown(content, extensions=['extra', 'tables'])
+    
+    # Створюємо об'єкт BeautifulSoup для обробки HTML
+    soup = BeautifulSoup(html, 'html.parser')
+    
+    # Виправляємо шляхи до зображень
+    for img in soup.find_all('img'):
+        src = img.get('src')
+        if src and not (src.startswith('http') or src.startswith('data:')):
+            abs_path = os.path.join(base_path, src)
+            if os.path.exists(abs_path):
+                img['src'] = Path(abs_path).as_uri()
+    
+    return str(soup)
+
 def convert_markdown_files_to_combined_html(md_files):
     """
-    Конвертує кожен Markdown-файл у HTML, коригує відносні посилання на зображення 
-    (перетворюючи їх у абсолютні file URI) та об'єднує результати в один HTML-документ.
+    Конвертує всі markdown файли в один HTML документ
     """
-    combined_html = (
-        "<html><head><meta charset='utf-8'>"
-        "<title>Об'єднаний Markdown</title></head><body>"
-    )
+    html_template = """
+    <html>
+    <head>
+        <meta charset="utf-8">
+        <style>
+            body {
+                font-family: Arial, sans-serif;
+                line-height: 1.6;
+                margin: 40px;
+            }
+            img {
+                max-width: 100%;
+                height: auto;
+            }
+            .file-section {
+                margin-bottom: 30px;
+                page-break-before: always;
+            }
+            .file-name {
+                color: #333;
+                border-bottom: 1px solid #ccc;
+                margin-bottom: 20px;
+            }
+        </style>
+    </head>
+    <body>
+    """
+    
+    content = []
     for md_file in md_files:
         try:
             with open(md_file, 'r', encoding='utf-8') as f:
-                md_text = f.read()
+                print(f"Обробка файлу: {md_file}")
+                md_content = f.read()
+                base_path = os.path.dirname(md_file)
+                
+                processed_content = process_markdown_content(md_content, base_path)
+                
+                section = f"""
+                <div class="file-section">
+                    <h2 class="file-name">{os.path.basename(md_file)}</h2>
+                    {processed_content}
+                </div>
+                """
+                content.append(section)
         except Exception as e:
-            print(f"Не вдалося прочитати {md_file}: {e}")
-            continue
-
-        # Конвертуємо Markdown у HTML
-        html_fragment = markdown.markdown(md_text, output_format="html5")
-        # Обробляємо HTML для коректної роботи з відносними шляхами до зображень
-        soup = BeautifulSoup(html_fragment, "html.parser")
-        md_dir = os.path.dirname(md_file)
-        for img in soup.find_all("img"):
-            src = img.get("src")
-            if src and not (src.startswith("http") or src.startswith("data:")):
-                abs_img_path = os.path.normpath(os.path.join(md_dir, src))
-                # Перетворюємо у file URI (це дозволяє WeasyPrint завантажувати зображення з файлової системи)
-                img["src"] = Path(abs_img_path).as_uri()
-        html_fragment = str(soup)
-        # Додаємо фрагмент до загального HTML із розділювальною горизонтальною лінією
-        combined_html += html_fragment
-        combined_html += "<hr style='page-break-after: always; border: none;'>"
-    combined_html += "</body></html>"
-    return combined_html
+            print(f"Помилка при обробці {md_file}: {e}")
+    
+    return html_template + "\n".join(content) + "</body></html>"
 
 def main():
     print("=== Генеруємо PDF для кожної підпапки з Markdown ===\n")
     
-    # Встановлюємо базову директорію. За замовчуванням використовуємо "src/site/notes"
     script_dir = os.path.dirname(os.path.abspath(__file__))
     default_base_dir = os.path.join(script_dir, "src/site/notes")
+    
+    # Отримуємо параметри від користувача
     base_dir = input(f"Введіть шлях до базової директорії з нотатками (за замовчуванням {default_base_dir}): ").strip() or default_base_dir
-    output_dir = input("Введіть шлях до папки, куди зберігати PDF (за замовчуванням базова директорія): ").strip() or base_dir
+    output_dir = input(f"Введіть шлях до папки для збереження PDF (за замовчуванням {base_dir}): ").strip() or base_dir
     additional_ignore_str = input("Додаткові папки для ігнорування (через кому чи пробіл) або Enter: ").strip()
+    
     additional_ignore = set()
     if additional_ignore_str:
         additional_ignore = {d.strip() for d in additional_ignore_str.replace(',', ' ').split()}
 
-    # Отримуємо список підпапок у базовій директорії, які не входять до списку ігнорування.
+    # Отримуємо список підпапок
     subdirs = []
     for entry in os.listdir(base_dir):
         full_path = os.path.join(base_dir, entry)
@@ -119,40 +168,50 @@ def main():
             subdirs.append(full_path)
 
     if not subdirs:
-        print("Не знайдено підпапок у", base_dir)
-        return
+        print(f"Не знайдено підпапок у {base_dir}. Обробляємо тільки кореневу папку...")
+        subdirs = [base_dir]
 
+    # Обробка кожної підпапки
     for subdir in subdirs:
         folder_name = os.path.basename(subdir)
         print(f"\nОбробка папки: {subdir}")
         
-        # Знаходимо Markdown-файли у поточній підпапці (рекурсивно)
+        # Знаходимо всі markdown файли та зображення
         md_files, img_paths = find_markdown_and_images(
             root_dir=subdir,
             ignore_dirs={'.git', 'node_modules', 'venv', 'dist', '__pycache__'}.union(additional_ignore),
             image_extensions={'.png', '.jpg', '.jpeg', '.gif', '.svg'}
         )
+        
         if not md_files:
-            print(f"У папці {subdir} не знайдено жодного .md-файлу, пропускаємо.")
+            print(f"У папці {subdir} не знайдено .md файлів, пропускаємо.")
             continue
 
-        print("Знайдено Markdown-файли:")
-        for m in md_files:
-            print("  ", m)
+        print("\nЗнайдено Markdown файли:")
+        for md_file in md_files:
+            print(f"  {md_file}")
 
-        print(f"Генеруємо об'єднаний HTML для папки {folder_name}...")
-        combined_html = convert_markdown_files_to_combined_html(md_files)
-
-        # Ім'я PDF відповідає назві папки (наприклад, "topic1.pdf")
-        output_pdf = os.path.join(output_dir, f"{folder_name}.pdf")
+        print(f"\nГенеруємо PDF для папки {folder_name}...")
+        
         try:
-            # base_url встановлено на поточну підпапку, щоб WeasyPrint правильно знаходив ресурси
-            HTML(string=combined_html, base_url=subdir).write_pdf(output_pdf)
-            print(f"PDF успішно сформовано: {output_pdf}")
+            # Конвертуємо markdown в HTML
+            html_content = convert_markdown_files_to_combined_html(md_files)
+            
+            # Генеруємо PDF
+            output_pdf = os.path.join(output_dir, f"{folder_name}.pdf")
+            HTML(string=html_content, base_url=subdir).write_pdf(output_pdf)
+            
+            print(f"PDF успішно створено: {output_pdf}")
+            
+            # Перевіряємо розмір файлу
+            if os.path.getsize(output_pdf) > 0:
+                print(f"Розмір файлу: {os.path.getsize(output_pdf)} байт")
+            else:
+                print("Попередження: згенерований PDF файл порожній!")
         except Exception as e:
-            print(f"Помилка при конвертації у PDF для {folder_name}:", e)
+            print(f"Помилка при створенні PDF для {folder_name}: {e}")
 
-    print("\nСкрипт завершено.")
+    print("\nГенерація PDF завершена.")
 
 if __name__ == "__main__":
     main()
