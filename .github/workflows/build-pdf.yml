@@ -48,9 +48,10 @@ jobs:
       - name: Update PDF records in Noco-DB
         env:
           NOCO_DB_API_URL: "https://nocodb.soyka.pp.ua"
-          NOCO_DB_TABLE_ID: "m3plh50uwtk34zd"
-          NOCO_DB_VIEW_ID: "vwtr2835wqny8msk"
+          NOCO_DB_TABLE_ID: "mdb4f2t1ngchrom"
+          NOCO_DB_VIEW_ID: "vwknikxbrl1mobu9"
           NOCO_DB_API_TOKEN: ${{ secrets.NOCO_DB_API_KEY }}
+          ATTACHMENT_FIELD_ID: "cyl3kusky2kreq3"  # ID поля для прикріплень
         run: |
           echo "Processing PDF files for Noco-DB update..."
 
@@ -58,17 +59,15 @@ jobs:
             filename=$(basename "$pdf")
             echo "Processing file: $filename"
 
-            # URL-кодуємо ім'я файлу
             encoded_filename=$(python3 -c "import urllib.parse, sys; print(urllib.parse.quote(sys.argv[1]))" "$filename")
 
-            # Отримуємо запис із NocoDB
+            # Пошук запису за filename з параметрами offset, limit та viewId
             response=$(curl -s --request GET \
-              --url "$NOCO_DB_API_URL/api/v2/tables/$NOCO_DB_TABLE_ID/records?where=filename,eq,$encoded_filename" \
+              --url "$NOCO_DB_API_URL/api/v2/tables/$NOCO_DB_TABLE_ID/records?where=filename,eq,$encoded_filename&offset=0&limit=25&viewId=$NOCO_DB_VIEW_ID" \
               --header "xc-token: $NOCO_DB_API_TOKEN")
 
-            # Перевіряємо, чи запис існує
             if echo "$response" | jq -e '.data | length == 0' > /dev/null; then
-              echo "Record for $filename not found. Creating a new record..."
+              echo "Створення нового запису для $filename..."
               
               attempt=0
               max_attempts=3
@@ -77,26 +76,26 @@ jobs:
                   --url "$NOCO_DB_API_URL/api/v2/tables/$NOCO_DB_TABLE_ID/records" \
                   --header "xc-token: $NOCO_DB_API_TOKEN" \
                   -F "filename=$filename" \
-                  -F "file=@$pdf")
+                  -F "$ATTACHMENT_FIELD_ID=@$pdf")
 
                 if [[ $? -eq 0 ]]; then
-                  echo "Successfully created record for $filename"
+                  echo "Успішно створено запис для $filename"
                   break
                 fi
                 
                 attempt=$((attempt+1))
-                echo "Retrying... ($attempt/$max_attempts)"
+                echo "Повторна спроба... ($attempt/$max_attempts)"
                 sleep 2
               done
             else
               recordId=$(echo "$response" | jq -r '.data[0].id')
               
               if [[ "$recordId" == "null" ]]; then
-                echo "Error: recordId is null, skipping PATCH for $filename"
+                echo "Помилка: recordId відсутній, пропускаємо $filename"
                 continue
               fi
               
-              echo "Record for $filename exists (ID: $recordId). Updating the record..."
+              echo "Оновлення існуючого запису $recordId для $filename..."
               
               attempt=0
               max_attempts=3
@@ -105,15 +104,15 @@ jobs:
                   --url "$NOCO_DB_API_URL/api/v2/tables/$NOCO_DB_TABLE_ID/records/$recordId" \
                   --header "xc-token: $NOCO_DB_API_TOKEN" \
                   -F "filename=$filename" \
-                  -F "file=@$pdf")
+                  -F "$ATTACHMENT_FIELD_ID=@$pdf")
 
                 if [[ $? -eq 0 ]]; then
-                  echo "Successfully updated record for $filename"
+                  echo "Успішно оновлено запис для $filename"
                   break
                 fi
                 
                 attempt=$((attempt+1))
-                echo "Retrying... ($attempt/$max_attempts)"
+                echo "Повторна спроба... ($attempt/$max_attempts)"
                 sleep 2
               done
             fi
