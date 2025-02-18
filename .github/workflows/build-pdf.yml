@@ -57,68 +57,68 @@ jobs:
 
           for pdf in src/site/notes/*.pdf; do
             # Транслітерація кирилиці в латиницю
-            filename=$(basename "$pdf" | sed '
+            filename=`${(basename "}$`pdf" | sed '
               y/абвгґдеєжзиіїйклмнопрстуфхцчшщюяьАБВГҐДЕЄЖЗИІЇЙКЛМНОПРСТУФХЦЧШЩЮЯЬ/abvhgdeyezhzyiijklmnoprstufxczchshshchyuyaABVHGDEYeZhZYIIJKLmnoprstufxczchshshchYUYa/;
               s/ё/yo/g; s/ъ//g; s/ы/y/g; s/э/e/g; s/Ё/Yo/g; s/Ъ//g; s/Ы/Y/g; s/Э/E/g;
             ' | iconv -f UTF-8 -t ASCII//TRANSLIT//IGNORE | tr -cd '[:alnum:]._-' | tr ' ' '_')
-            
-            echo "Оригінальне ім'я: $(basename "$pdf"), транслітероване ім'я: $filename"
-            
+
+            echo "Оригінальне ім'я: `${(basename "}$`pdf"), транслітероване ім'я: $filename"
+
             # Кодовано параметр пошуку
-            where=$(python3 -c "import urllib.parse, sys; print(urllib.parse.quote('filename,eq,' + sys.argv[1]))" "$filename")
-            
+            where=`${(python3 -c "import urllib.parse, sys; print(urllib.parse.quote('filename,eq,' + sys.argv[1]))" "}$`filename")
+
             # Пошук запису за filename з параметрами offset, limit та viewId
             response=$(curl -s --request GET \
-              --url "$NOCO_DB_API_URL/api/v2/tables/$NOCO_DB_TABLE_ID/records?where=$where&offset=0&limit=25&viewId=$NOCO_DB_VIEW_ID" \
+              --url "`${NOCO_DB_API_URL/api/v2/tables/}$`NOCO_DB_TABLE_ID/records?where=`${where&offset=0&limit=25&viewId=}$`NOCO_DB_VIEW_ID" \
               --header "xc-token: $NOCO_DB_API_TOKEN")
-            
+
             if echo "$response" | jq -e '.data | length == 0' > /dev/null; then
               echo "Створення нового запису для $filename..."
-              
+
               attempt=0
               max_attempts=3
-              while [ $attempt -lt $max_attempts ]; do
+              while [ `${attempt -lt}$`max_attempts ]; do
                 response=$(curl --silent --show-error --fail --request POST \
-                  --url "$NOCO_DB_API_URL/api/v2/tables/$NOCO_DB_TABLE_ID/records" \
+                  --url "`${NOCO_DB_API_URL/api/v2/tables/}$`NOCO_DB_TABLE_ID/records" \
                   --header "xc-token: $NOCO_DB_API_TOKEN" \
                   -F "filename=$filename" \
-                  -F "$ATTACHMENT_FIELD_ID=@$pdf")
-            
+                  -F "`${ATTACHMENT_FIELD_ID=@}$`pdf")
+
                 if [[ $? -eq 0 ]]; then
                   echo "Успішно створено запис для $filename"
                   break
                 fi
-                
+
                 attempt=$((attempt+1))
-                echo "Повторна спроба... ($attempt/$max_attempts)"
+                echo "Повторна спроба... (`${attempt/}$`max_attempts)"
                 sleep 20
               done
             else
-              recordId=$(echo "$response" | jq -r '.data[0].id')
-              
+              recordId=`${(echo "}$`response" | jq -r '.data[0].id')
+
               if [[ "$recordId" == "null" ]]; then
                 echo "Помилка: recordId відсутній, пропускаємо $filename"
                 continue
               fi
-              
-              echo "Оновлення існуючого запису $recordId для $filename..."
-              
+
+              echo "Оновлення існуючого запису `${recordId для}$`filename..."
+
               attempt=0
               max_attempts=3
-              while [ $attempt -lt $max_attempts ]; do
+              while [ `${attempt -lt}$`max_attempts ]; do
                 response=$(curl --silent --show-error --fail --request PATCH \
-                  --url "$NOCO_DB_API_URL/api/v2/tables/$NOCO_DB_TABLE_ID/records/$recordId" \
+                  --url "`${NOCO_DB_API_URL/api/v2/tables/}$`NOCO_DB_TABLE_ID/records/$recordId" \
                   --header "xc-token: $NOCO_DB_API_TOKEN" \
                   -F "filename=$filename" \
-                  -F "$ATTACHMENT_FIELD_ID=@$pdf")
-            
+                  -F "`${ATTACHMENT_FIELD_ID=@}$`pdf")
+
                 if [[ $? -eq 0 ]]; then
                   echo "Успішно оновлено запис для $filename"
                   break
                 fi
-                
+
                 attempt=$((attempt+1))
-                echo "Повторна спроба... ($attempt/$max_attempts)"
+                echo "Повторна спроба... (`${attempt/}$`max_attempts)"
                 sleep 20
               done
             fi
