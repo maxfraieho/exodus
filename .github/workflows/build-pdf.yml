@@ -91,7 +91,7 @@ jobs:
                 
                 attempt=$((attempt+1))
                 echo "Повторна спроба... ($attempt/$max_attempts)"
-                sleep 2
+                sleep 20
               done
             else
               recordId=$(echo "$response" | jq -r '.data[0].id')
@@ -119,7 +119,7 @@ jobs:
                 
                 attempt=$((attempt+1))
                 echo "Повторна спроба... ($attempt/$max_attempts)"
-                sleep 2
+                sleep 20
               done
             fi
           done
