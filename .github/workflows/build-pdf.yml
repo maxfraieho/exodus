@@ -53,7 +53,7 @@ jobs:
           NOCO_DB_API_TOKEN: ${{ secrets.NOCO_DB_API_KEY }}
           ATTACHMENT_FIELD_ID: "cyl3kusky2kreq3"  # ID поля для прикріплень
         run: |
-          echo "Processing PDF files for Noco-DB update..."
+          echo "Закидаємо PDF files for Noco-DB update..."
 
           for pdf in src/site/notes/*.pdf; do
             filename=$(basename "$pdf")
