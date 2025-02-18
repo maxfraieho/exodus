@@ -1,4 +1,4 @@
-name: Generate PDF and Upload to MinIO via Cloudflare (one-by-one, put-object)
+name: Generate PDF and Upload to MinIO via Cloudflare (s3 sync)
 
 on:
   push:
@@ -56,49 +56,21 @@ jobs:
         env:
           AWS_ACCESS_KEY_ID: 77icD4OgvRKPKF198eiC
           AWS_SECRET_ACCESS_KEY: B3kWQMmF4zZLb9W6dboJrdDQAMWBrVyAG4ySFBIx
+          MINIO_ENDPOINT_URL: https://apiminio.exodus.pp.ua
+          MINIO_BUCKET: exodusbase
         run: |
           aws configure set aws_access_key_id "$AWS_ACCESS_KEY_ID"
           aws configure set aws_secret_access_key "$AWS_SECRET_ACCESS_KEY"
           aws configure set default.region us-east-1
           aws configure set default.s3.addressing_style path
+          aws configure set default.s3.signature_version s3v4
 
-      - name: Upload PDFs to MinIO (put-object, simple rename)
-        env:
-          AWS_S3_DISABLE_MULTIPART: "1"
+      - name: Upload PDFs to MinIO (s3 sync)
         shell: bash
         run: |
-          echo "Uploading PDF files to MinIO via Cloudflare Tunnel (using s3api put-object, one-by-one)"
+          echo "Uploading PDF files to MinIO via Cloudflare Tunnel (using s3 sync)"
           
-          # Знайти всі PDF у каталозі src/site/notes
-          mapfile -t pdf_files < <(find src/site/notes -type f -iname "*.pdf")
-          
-          for pdf in "${pdf_files[@]}"; do
-            orig_name="$(basename "$pdf")"
-            
-            # Видаляємо всі символи, окрім літер (лат/кир), цифр, . _ - та пробілів,
-            # а потім пробіли замінюємо на дефіси.
-            safe_name="$(
-              echo "$orig_name" \
-                | LC_ALL=en_US.UTF-8 sed -E 's/[^-[:alnum:]А-Яа-яЁёІіЇїЄєҐґ._ ]//g' \
-                | sed 's/ /-/g'
-            )"
-            
-            echo "→ Original: $orig_name"
-            echo "→ Cleaned : $safe_name"
-            
-            aws --endpoint-url https://apiminio.exodus.pp.ua \
-                s3api put-object \
-                --bucket exodusbase \
-                --key "$safe_name" \
-                --body "$pdf" \
-                --content-type application/pdf \
-                --cli-read-timeout 360 \
-                --cli-connect-timeout 360
-            
-            if [[ $? -ne 0 ]]; then
-              echo "Помилка під час завантаження: $orig_name"
-              exit 1
-            fi
-          done
+          # Синхронізація локальної директорії з бакетом MinIO
+          aws --endpoint-url "$MINIO_ENDPOINT_URL" s3 sync src/site/notes s3://"$MINIO_BUCKET" --delete
           
           echo "Успішно завантажено PDF-файли."
