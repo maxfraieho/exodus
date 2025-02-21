@@ -2,11 +2,8 @@
 {"title":"Впровадження та оптимізації Cloudflare AI Gateway","dg-publish":true,"dg-metatags":null,"dg-home":null,"permalink":"/dokumentacziya-do-proektu-exodus-pp-ua/vprovadzhennya-ta-optimizacziyi-cloudflare-ai-gateway/","dgPassFrontmatter":true,"noteIcon":""}
 ---
 
-Ось оновлений текст з покращеним форматуванням Markdown та оновленими внутрішніми посиланнями:
 
----
-
-### Зміст
+## Зміст
 
 - [Основна конфігурація та розгортання](#osnovna-konfiguratsiya-ta-rozgortannya)
   - [Налаштування проекту](#nalashtuvannya-proektu)
@@ -28,13 +25,11 @@
   - [CI/CD налаштування](#cicd-nalashtuvannya)
   - [Розгортання](#rozgortannya)
 
-[Решта вашого контенту залишається без змін...]
-
 ---
 
-### Основна конфігурація та розгортання
+## Основна конфігурація та розгортання {#osnovna-konfiguratsiya-ta-rozgortannya}
 
-#### Налаштування проекту
+### Налаштування проекту {#nalashtuvannya-proektu}
 
 1. Створіть нову директорію проекту:
 
@@ -78,14 +73,14 @@
    """
    ```
 
-#### Встановлення залежностей
+### Встановлення залежностей {#vstanovlennya-zalezhnostey}
 
 ```bash
 npm init -y
 npm install @cloudflare/workers @cloudflare/ai honojs wrangler
 ```
 
-#### Структура проекту
+### Структура проекту {#struktura-proektu}
 
 Створіть наступну структуру директорій:
 
@@ -102,9 +97,9 @@ cloudflare-ai-gateway/
 └── wrangler.toml
 ```
 
-#### Реалізація основних компонентів
+### Реалізація основних компонентів {#realizatsiya-osnovnykh-komponentiv}
 
-##### Файл: `src/prompt-engine.js`
+#### Файл: `src/prompt-engine.js`
 
 ```javascript
 export class PromptEngine {
@@ -155,7 +150,7 @@ export class PromptEngine {
 }
 ```
 
-##### Файл: `src/worker.js`
+#### Файл: `src/worker.js`
 
 ```javascript
 import { PromptEngine } from './prompt-engine.js';
@@ -274,7 +269,7 @@ async function logAnalytics(request, response, model, env) {
 }
 ```
 
-##### Файл: `src/scaler.js`
+#### Файл: `src/scaler.js`
 
 ```javascript
 export class ModelScaler {
@@ -302,9 +297,9 @@ export class ModelScaler {
 
 ---
 
-### Оптимізації та покращення
+## Оптимізації та покращення {#optymizatsiyi-ta-pokrashchennya}
 
-#### Кешування та продуктивність
+### Кешування та продуктивність {#keshuvannya-ta-produktyvnist}
 
 Створіть файл `src/cache-strategies.js`:
 
@@ -325,15 +320,15 @@ export function getCacheStrategy(model) {
 }
 ```
 
-#### Масштабування
+### Масштабування {#masshtabuvannya}
 
 Модуль масштабування знаходиться у файлі `src/scaler.js` і оновлено, як показано вище.
 
 ---
 
-### Інтеграція з n8n
+## Інтеграція з n8n {#intehratsiya-z-n8n}
 
-#### Базова конфігурація HTTP-запиту
+### Базова конфігурація HTTP-запиту {#bazova-konfihuratsiya-http-zapytu}
 
 Налаштуйте вузол HTTP Request в n8n:
 
@@ -355,9 +350,9 @@ export function getCacheStrategy(model) {
 }
 ```
 
-#### Оптимізація моделей
+### Оптимізація моделей {#optymizatsiya-modeley}
 
-#### Обробка помилок
+### Обробка помилок {#obrobka-pomylok}
 
 ```javascript
 try {
@@ -375,16 +370,17 @@ try {
 
 ---
 
-### Безпека та моніторинг
+## Безпека та моніторинг {#bezpeka-ta-monitorynh}
 
-#### Налаштування безпеки
+### Налаштування безпеки {#nalashtuvannya-bezpeky}
 
 Створіть файл `src/middleware/security.js`:
 
 ```javascript
 export async function securityMiddleware(request) {
+  const RATE_LIMIT = 100; // Запитів за хвилину
   const limiter = new RateLimiter({
-    tokensPerInterval: 100,
+    tokensPerInterval: RATE_LIMIT,
     interval: "minute"
   });
 
@@ -402,13 +398,13 @@ export async function securityMiddleware(request) {
 }
 ```
 
-#### Моніторинг продуктивності
+### Моніторинг продуктивності {#monitorynh-produktyvnosti}
 
 ---
 
-### Тестування та розгортання
+## Тестування та розгортання {#testuvannya-ta-rozgortannya}
 
-#### Налаштування тестів
+### Налаштування тестів {#nalashtuvannya-testiv}
 
 Створіть файл `test/worker.test.js`:
 
@@ -457,7 +453,7 @@ describe('AI Gateway Worker', () => {
 });
 ```
 
-#### CI/CD налаштування
+### CI/CD налаштування {#cicd-nalashtuvannya}
 
 Створіть файл `.github/workflows/deploy.yml`:
 
@@ -486,7 +482,7 @@ jobs:
           command: publish
 ```
 
-#### Розгортання
+### Розгортання {#rozgortannya}
 
 1. Налаштуйте секрети:
 
