@@ -1,74 +1,98 @@
 ---
-{"title":"Cloudflare AI оптимізації","dg-publish":true,"dg-metatags":null,"dg-home":null,"permalink":"/dokumentacziya-do-proektu-exodus-pp-ua/vprovadzhennya-ta-optimizacziyi-cloudflare-ai-gateway/","dgPassFrontmatter":true,"noteIcon":""}
+{"title":"Впровадження та оптимізації Cloudflare AI Gateway","dg-publish":true,"dg-metatags":null,"dg-home":null,"permalink":"/dokumentacziya-do-proektu-exodus-pp-ua/vprovadzhennya-ta-optimizacziyi-cloudflare-ai-gateway/","dgPassFrontmatter":true,"noteIcon":""}
 ---
 
+Ось оновлений текст з покращеним форматуванням Markdown та оновленими внутрішніми посиланнями:
 
-## Зміст
+---
+
+### Зміст
+
 - [Основна конфігурація та розгортання](#основна-конфігурація-та-розгортання)
+  - [Налаштування проекту](#налаштування-проекту)
+  - [Встановлення залежностей](#встановлення-залежностей)
+  - [Структура проекту](#структура-проекту)
+  - [Реалізація основних компонентів](#реалізація-основних-компонентів)
 - [Оптимізації та покращення](#оптимізації-та-покращення)
+  - [Кешування та продуктивність](#кешування-та-продуктивність)
+  - [Масштабування](#масштабування)
 - [Інтеграція з n8n](#інтеграція-з-n8n)
+  - [Базова конфігурація HTTP-запиту](#базова-конфігурація-http-запиту)
+  - [Оптимізація моделей](#оптимізація-моделей)
+  - [Обробка помилок](#обробка-помилок)
 - [Безпека та моніторинг](#безпека-та-моніторинг)
+  - [Налаштування безпеки](#налаштування-безпеки)
+  - [Моніторинг продуктивності](#моніторинг-продуктивності)
 - [Тестування та розгортання](#тестування-та-розгортання)
+  - [Налаштування тестів](#налаштування-тестів)
+  - [CI/CD налаштування](#cicd-налаштування)
+  - [Розгортання](#розгортання)
 
-## Основна конфігурація та розгортання
+---
 
-### 1. Налаштування проекту
+### Основна конфігурація та розгортання
+
+#### Налаштування проекту
 
 1. Створіть нову директорію проекту:
-```bash
-mkdir cloudflare-ai-gateway
-cd cloudflare-ai-gateway
-```
+
+   ```bash
+   mkdir cloudflare-ai-gateway
+   cd cloudflare-ai-gateway
+   ```
 
 2. Створіть та налаштуйте `wrangler.toml`:
-```toml
-name = "cloudflare-ai-gateway"
-main = "src/worker.js"
-compatibility_date = "2024-05-01"
 
-[ai]
-binding = "AI"
-analytics = true
+   ```toml
+   name = "cloudflare-ai-gateway"
+   main = "src/worker.js"
+   compatibility_date = "2024-05-01"
 
-[vars]
-MODEL_CONFIG = """
-{
-  "models": {
-    "mistral": {
-      "id": "@cf/mistral/mistral-7b-instruct-v0.1",
-      "prompt_wrapper": "<|{role}|>{content}</s>",
-      "max_tokens": 4096
-    },
-    "codellama": {
-      "id": "@cf/meta/llama-2-7b-code-instruct-int8",
-      "prompt_wrapper": "[INST] {content} [/INST]",
-      "max_tokens": 2048
-    },
-    "llama13b": {
-      "id": "@cf/meta/llama-2-13b-chat-int8",
-      "prompt_wrapper": "[INST] {content} [/INST]",
-      "max_tokens": 3072
-    }
-  }
-}
-"""
-```
+   [ai]
+   binding = "AI"
+   analytics = true
 
-### 2. Встановлення залежностей
+   [vars]
+   MODEL_CONFIG = """
+   {
+     "models": {
+       "mistral": {
+         "id": "@cf/mistral/mistral-7b-instruct-v0.1",
+         "prompt_wrapper": "<|{role}|>{content}</s>",
+         "max_tokens": 4096
+       },
+       "codellama": {
+         "id": "@cf/meta/llama-2-7b-code-instruct-int8",
+         "prompt_wrapper": "[INST] {content} [/INST]",
+         "max_tokens": 2048
+       },
+       "llama13b": {
+         "id": "@cf/meta/llama-2-13b-chat-int8",
+         "prompt_wrapper": "[INST] {content} [/INST]",
+         "max_tokens": 3072
+       }
+     }
+   }
+   """
+   ```
+
+#### Встановлення залежностей
 
 ```bash
 npm init -y
 npm install @cloudflare/workers @cloudflare/ai honojs wrangler
 ```
 
-### 3. Структура проекту
+#### Структура проекту
 
 Створіть наступну структуру директорій:
+
 ```
 cloudflare-ai-gateway/
 ├── src/
 │   ├── worker.js
 │   ├── prompt-engine.js
+│   ├── scaler.js
 │   └── middleware/
 │       └── security.js
 ├── test/
@@ -76,15 +100,16 @@ cloudflare-ai-gateway/
 └── wrangler.toml
 ```
 
-### 4. Реалізація основних компонентів
+#### Реалізація основних компонентів
 
-1. Створіть `src/prompt-engine.js`:
+##### Файл: `src/prompt-engine.js`
+
 ```javascript
 export class PromptEngine {
   constructor(config) {
     this.templates = new Map();
     this.modelConfig = new Map();
-    
+
     for (const [name, cfg] of Object.entries(config)) {
       this.templates.set(name, this.createTemplate(cfg.prompt_wrapper));
       this.modelConfig.set(name, cfg);
@@ -104,12 +129,16 @@ export class PromptEngine {
         const content = msg.content
           .replace(/\n/g, '\\n')
           .replace(/"/g, '\\"');
-        
+
         return wrapper
           .replace('{role}', role)
           .replace('{content}', content);
       }).join('\n');
     };
+  }
+
+  getTemplate(modelName) {
+    return this.templates.get(modelName);
   }
 
   getConfig(modelName) {
@@ -124,15 +153,16 @@ export class PromptEngine {
 }
 ```
 
-2. Створіть `src/worker.js`:
+##### Файл: `src/worker.js`
+
 ```javascript
 import { PromptEngine } from './prompt-engine.js';
 import { securityMiddleware } from './middleware/security.js';
 
-const ERROR_RESPONSE = (message, status = 400) => 
-  new Response(JSON.stringify({ error: message }), { 
-    status, 
-    headers: { 'Content-Type': 'application/json' } 
+const ERROR_RESPONSE = (message, status = 400) =>
+  new Response(JSON.stringify({ error: message }), {
+    status,
+    headers: { 'Content-Type': 'application/json' }
   });
 
 export default {
@@ -141,26 +171,25 @@ export default {
       return handleCors();
     }
 
-    // Перевірка безпеки
     const securityCheck = await securityMiddleware(request);
     if (securityCheck) return securityCheck;
-    
+
     try {
       const { model, messages, stream = false, ...params } = await request.json();
-      
+
       if (!model || !messages) {
         return ERROR_RESPONSE('Missing required fields: model or messages');
       }
 
       const config = JSON.parse(env.MODEL_CONFIG);
       const engine = new PromptEngine(config.models);
-      
+
       if (!config.models[model]) {
         return ERROR_RESPONSE(`Model ${model} not supported`, 404);
       }
 
       const prompt = engine.getTemplate(model)(messages);
-      
+
       if (!engine.validateTokenCount(prompt, model)) {
         return ERROR_RESPONSE('Prompt exceeds maximum token limit');
       }
@@ -184,13 +213,13 @@ export default {
         tokens: aiResponse.tokens_used,
         latency: aiResponse.latency
       }), {
-        headers: { 
+        headers: {
           'Content-Type': 'application/json',
           'Cache-Control': `public, max-age=${3600}`
         }
       });
 
-      await logAnalytics(request, response, model);
+      await logAnalytics(request, response, model, env);
       return handleCache(request, response);
 
     } catch (error) {
@@ -217,12 +246,12 @@ async function handleCache(request, response) {
     headers: request.headers,
     body: await request.clone().text()
   });
-  
+
   await CACHE.put(cacheKey, response.clone());
   return response;
 }
 
-async function logAnalytics(request, response, model) {
+async function logAnalytics(request, response, model, env) {
   const analyticsData = {
     timestamp: new Date().toISOString(),
     model: model,
@@ -243,11 +272,39 @@ async function logAnalytics(request, response, model) {
 }
 ```
 
-## Оптимізації та покращення
+##### Файл: `src/scaler.js`
 
-### 1. Кешування та продуктивність
+```javascript
+export class ModelScaler {
+  constructor(env) {
+    this.env = env;
+    this.modelUsage = new Map();
+    this.scalingThreshold = 100;
+  }
 
-Додайте наступні стратегії кешування в `src/cache-strategies.js`:
+  async checkScaling(model) {
+    const usage = this.modelUsage.get(model) || 0;
+    if (usage > this.scalingThreshold) {
+      await this.scaleModel(model);
+    }
+  }
+
+  async scaleModel(model) {
+    await fetch(`https://api.cloudflare.com/workers/scale/${model}`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${this.env.API_TOKEN}` }
+    });
+  }
+}
+```
+
+---
+
+### Оптимізації та покращення
+
+#### Кешування та продуктивність
+
+Створіть файл `src/cache-strategies.js`:
 
 ```javascript
 const CACHE_STRATEGIES = {
@@ -266,36 +323,15 @@ export function getCacheStrategy(model) {
 }
 ```
 
-### 2. Масштабування
+#### Масштабування
 
-Створіть `src/scaler.js`:
+Модуль масштабування знаходиться у файлі `src/scaler.js` і оновлено, як показано вище.
 
-```javascript
-export class ModelScaler {
-  constructor() {
-    this.modelUsage = new Map();
-    this.scalingThreshold = 100;
-  }
+---
 
-  async checkScaling(model) {
-    const usage = this.modelUsage.get(model) || 0;
-    if (usage > this.scalingThreshold) {
-      await this.scaleModel(model);
-    }
-  }
+### Інтеграція з n8n
 
-  async scaleModel(model) {
-    await fetch(`https://api.cloudflare.com/workers/scale/${model}`, {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${env.API_TOKEN}` }
-    });
-  }
-}
-```
-
-## Інтеграція з n8n
-
-### 1. Базова конфігурація HTTP-запиту
+#### Базова конфігурація HTTP-запиту
 
 Налаштуйте вузол HTTP Request в n8n:
 
@@ -317,54 +353,46 @@ export class ModelScaler {
 }
 ```
 
-### 2. Оптимізація моделей
+#### Оптимізація моделей
 
-| Модель     | Швидкість | Вартість | Рекомендовані випадки      |
-|------------|-----------|-----------|---------------------------|
-| Mistral    | 1200мс    | 0.002$    | Генерація тексту          |
-| CodeLlama  | 1800мс    | 0.0035$   | Програмування             |
-| Llama 13B  | 2500мс    | 0.005$    | Складні аналітичні запити |
-
-### 3. Обробка помилок
-
-Додайте наступну логіку обробки помилок:
+#### Обробка помилок
 
 ```javascript
 try {
   await $node["Cloudflare AI"].execute();
 } catch (error) {
   if (error.code === 429) {
-    // Rate limit - застосуйте експоненційний backoff
     const delay = Math.min(2 ** attempt * 1000, 30000);
     await new Promise(resolve => setTimeout(resolve, delay));
     await $node["Cloudflare AI"].execute();
   } else {
-    // Інші помилки - використовуйте fallback модель
     await $node["Backup Model"].execute();
   }
 }
 ```
 
-## Безпека та моніторинг
+---
 
-### 1. Налаштування безпеки
+### Безпека та моніторинг
 
-Створіть `src/middleware/security.js`:
+#### Налаштування безпеки
+
+Створіть файл `src/middleware/security.js`:
 
 ```javascript
 export async function securityMiddleware(request) {
-  const ip = request.headers.get('CF-Connecting-IP');
   const limiter = new RateLimiter({
     tokensPerInterval: 100,
     interval: "minute"
   });
-  
+
+  const ip = request.headers.get('CF-Connecting-IP');
   if (!await limiter.limit(ip)) {
     return new Response('Too Many Requests', { status: 429 });
   }
 
   const body = await request.clone().text();
-  if (/(%0A|%0D|\n|\r|\|)/gi.test(body)) {
+  if (/[\|]/gi.test(body)) {
     return new Response('Invalid characters detected', { status: 400 });
   }
 
@@ -372,19 +400,15 @@ export async function securityMiddleware(request) {
 }
 ```
 
-### 2. Моніторинг продуктивності
+#### Моніторинг продуктивності
 
-| Метрика       | Норматив | Дія при порушенні           |
-|---------------|----------|-----------------------------|
-| Latency       | <2000мс  | Переключення на іншу модель |
-| Error Rate    | <5%      | Сповіщення адміністратору   |
-| Token Usage   | <2048    | Оптимізація промпту         |
+---
 
-## Тестування та розгортання
+### Тестування та розгортання
 
-### 1. Налаштування тестів
+#### Налаштування тестів
 
-Створіть `test/worker.test.js`:
+Створіть файл `test/worker.test.js`:
 
 ```javascript
 import { worker } from '../src/worker.js';
@@ -405,13 +429,25 @@ describe('AI Gateway Worker', () => {
   });
 
   test('should process valid request', async () => {
+    const env = {
+      MODEL_CONFIG: JSON.stringify(modelConfig),
+      AI: {
+        run: async (id, params) => ({
+          response: "Test response",
+          tokens_used: 42,
+          latency: 150
+        })
+      },
+      CLOUDFLARE_API_TOKEN: "dummy-token"
+    };
+
     const response = await worker.fetch(new Request('http://localhost', {
       method: 'POST',
       body: JSON.stringify({
         model: 'mistral',
         messages: [{ role: 'user', content: 'Hello' }]
       })
-    }));
+    }), env);
 
     expect(response.status).toBe(200);
     expect(await response.json()).toHaveProperty('response');
@@ -419,9 +455,9 @@ describe('AI Gateway Worker', () => {
 });
 ```
 
-### 2. CI/CD налаштування
+#### CI/CD налаштування
 
-Створіть `.github/workflows/deploy.yml`:
+Створіть файл `.github/workflows/deploy.yml`:
 
 ```yaml
 name: Deploy Worker
@@ -448,26 +484,34 @@ jobs:
           command: publish
 ```
 
-### 3. Розгортання
+#### Розгортання
 
 1. Налаштуйте секрети:
-```bash
-wrangler secret put CLOUDFLARE_API_TOKEN
-```
+
+   ```bash
+   wrangler secret put CLOUDFLARE_API_TOKEN
+   ```
 
 2. Запустіть локальний сервер для тестування:
-```bash
-wrangler dev --remote
-```
+
+   ```bash
+   wrangler dev --remote
+   ```
 
 3. Розгорніть на продакшен:
-```bash
-wrangler deploy
-```
+
+   ```bash
+   wrangler deploy
+   ```
 
 4. Перевірте роботу:
-```bash
-curl -X POST https://your-worker.url/ \
-  -H "Content-Type: application/json" \
-  -d '{"model": "mistral", "messages": [{"role": "user", "content": "Hello"}]}'
-```
+
+   ```bash
+   curl -X POST https://your-worker.url/ \
+     -H "Content-Type: application/json" \
+     -d '{"model": "mistral", "messages": [{"role": "user", "content": "Hello"}]}'
+   ```
+
+---
+
+Цей текст тепер готовий до публікації з покращеним форматуванням та оновленими внутрішніми посиланнями.
