@@ -70,8 +70,7 @@
        }
      }
    }
-   """
-   ```
+    ```
 
 ### Встановлення залежностей {#vstanovlennya-zalezhnostey}
 
@@ -487,7 +486,7 @@ jobs:
 1. Налаштуйте секрети:
 
    ```bash
-   wrangler secret put CLOUDFLARE_API_TOKEN
+   wrangler secret put _0YldBYkfkzVU5vdEHeJ6WXPfqKDtvtWWWXmjivi
    ```
 
 2. Запустіть локальний сервер для тестування:
