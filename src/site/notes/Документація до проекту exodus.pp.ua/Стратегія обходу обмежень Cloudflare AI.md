@@ -2,7 +2,6 @@
 {"title":"Стратегія обходу обмежень Cloudflare AI","dg-publish":true,"dg-metatags":null,"dg-home":null,"permalink":"/dokumentacziya-do-proektu-exodus-pp-ua/strategiya-obhodu-obmezhen-cloudflare-ai/","dgPassFrontmatter":true,"noteIcon":""}
 ---
 
- 
 
 ### Ключові моменти
 - Найкраща стратегія — це каскадні запити з автоматичним продовженням, де Cloudflare Worker додає маркер `[TRUNCATED]`, якщо відповідь обрізається, а n8n обробляє це, надсилаючи подальші запити для завершення.
@@ -78,7 +77,10 @@ async function handleRequest(request) {
 | Вузол                  | Опис                                                                 |
 |-----------------------|----------------------------------------------------------------------|
 | Початковий вузол      | Початок робочого процесу.                                            |
-| HTTP Request (Початковий) | Метод: POST, URL: `https://your-worker-id.workers.dev`, Тіло: `{{ $input.prompt }}`, Вихід: `response`. |
+| HTTP Request (Початковий) | Метод: POST, URL:
+
+```
+https://your-worker-id.workers.dev`, Тіло: `{{ $input.prompt }}`, Вихід: `response`. |
 | Set Variable (Початкова відповідь) | Змінна: `current_response`, Значення: `{{ $node.Initial Request.data }}`. |
 | Loop (Продовження)     | Умова: `{{ $node.current_response.data.indexOf("[TRUNCATED]") != -1 }}`. |
 | Function (Видобути останній фрагмент) | Код: <br> ```javascript<br> const response = this.getItemValue('current_response');<br> const index = response.indexOf("[TRUNCATED]");<br> if (index != -1) {<br>   const last_fragment = response.substring(index - 100, index);<br>   return last_fragment;<br> } else {<br>   return "";<br> }<br> ```<br> Вихід: `last_fragment`. |
@@ -87,7 +89,7 @@ async function handleRequest(request) {
 | Function (Оновити поточну відповідь) | Код: <br> ```javascript<br> const current_response = this.getItemValue('current_response');<br> const new_response = this.getItemValue('new_response');<br> let cleaned_new_response = new_response.replace("[TRUNCATED]", "");<br> const updated_response = current_response + cleaned_new_response;<br> return updated_response;<br> ```<br> Вихід: `updated_response`, встановити `current_response` як `updated_response`. |
 | Set Variable (Фінальна відповідь) | Змінна: `final_response`, Значення: `{{ $node.current_response }}`. |
 | Кінцевий вузол        | Вивести `final_response`. |
-
+```
 Цей робочий процес забезпечує, що відповідь буде зібрана повністю, навіть якщо вона обрізається на кожному етапі.
 
 #### Додаткові міркування
@@ -97,10 +99,3 @@ async function handleRequest(request) {
 
 #### Висновок
 Рекомендована стратегія — каскадні запити з автоматичним продовженням, реалізована через модифікацію Cloudflare Worker для додавання маркера `[TRUNCATED]` і налаштування циклу в n8n для повторних запитів. Це забезпечить повну відповідь, обходячи обмеження довжини на безкоштовному плані. Переконайтеся, що враховуєте можливі проблеми з контекстом і лімітом ітерацій для стабільної роботи.
-
-#### Ключові цитати
-- [Limits observed by Cloudflare Free plan for various features](https://developers.cloudflare.com/pages/platform/limits/)
-- [Pricing and limits for Cloudflare Workers AI, including neuron-based billing](https://developers.cloudflare.com/workers-ai/platform/pricing/)
-- [Detailed limits for Cloudflare Workers AI platform, including rate limits](https://developers.cloudflare.com/workers-ai/platform/limits/)
-- [Streaming and context length enhancements for LLMs on Workers AI](https://blog.cloudflare.com/workers-ai-streaming/)
-- [Models available in Cloudflare Workers AI with token limits](https://developers.cloudflare.com/workers-ai/models/)
