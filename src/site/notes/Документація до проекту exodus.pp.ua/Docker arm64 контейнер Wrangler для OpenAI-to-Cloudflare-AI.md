@@ -1,5 +1,5 @@
 ---
-{"title":"Docker arm64 контейнер Wrangler для OpenAI-to-Cloudflare-AI Ця стаття детально описує процес","dg-publish":true,"dg-metatags":null,"dg-home":null,"permalink":"/dokumentacziya-do-proektu-exodus-pp-ua/docker-arm64-kontejner-wrangler-dlya-open-ai-to-cloudflare-ai/","dgPassFrontmatter":true,"noteIcon":""}
+{"title":"Docker arm64 контейнер Wrangler для OpenAI-to-Cloudflare-AI","dg-publish":true,"dg-metatags":null,"dg-home":null,"permalink":"/dokumentacziya-do-proektu-exodus-pp-ua/docker-arm64-kontejner-wrangler-dlya-open-ai-to-cloudflare-ai/","dgPassFrontmatter":true,"noteIcon":""}
 ---
 
 
