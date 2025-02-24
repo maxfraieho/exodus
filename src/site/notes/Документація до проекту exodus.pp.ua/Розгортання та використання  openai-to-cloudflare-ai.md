@@ -2,144 +2,248 @@
 {"title":"Докладна інструкція з розгортання та використання проекту openai-to-cloudflare-ai","dg-publish":true,"dg-metatags":null,"dg-home":null,"permalink":"/dokumentacziya-do-proektu-exodus-pp-ua/rozgortannya-ta-vikoristannya-openai-to-cloudflare-ai/","dgPassFrontmatter":true,"noteIcon":""}
 ---
 
-Нижче наведено приклад **Dockerfile**, який дозволить розгорнути проєкт **[openai-to-cloudflare-ai](https://github.com/pa4080/openai-to-cloudflare-ai.git)** на мікросервері (наприклад, на ARM64), з можливістю локально редагувати файли **`.env`** та **`wrangler.toml`**, а також подолати обмеження безкоштовного білінгу Cloudflare завдяки підтримці потокового режиму, кешування через KV тощо.
+# Розгортання  openai-to-cloudflare-ai для обходу обмежень безкоштовного білінгу Cloudflare AI
 
-## 1. Dockerfile
+Привіт! У цій статті я розповім, як розгорнути проєкт [openai-to-cloudflare-ai](https://github.com/pa4080/openai-to-cloudflare-ai) на Cloudflare Workers за допомогою Docker і Wrangler, а також як використати його для обходу обмежень безкоштовного плану Cloudflare AI, зокрема для роботи з API-ендпоінтами потоків (`/v1/threads` і `/v1/threads/:id/runs`). Формат статті адаптовано для зручного використання в Obsidian.
 
-> Збережіть цей файл під назвою, наприклад, `Dockerfile` у новій теці вашого проєкту.
+---
+
+## Вступ
+
+Cloudflare AI у безкоштовному плані має обмеження на кількість запитів і обсяг даних, що може ускладнити роботу з API, наприклад, для створення та управління потоками (`threads`). Проєкт **openai-to-cloudflare-ai** дозволяє перенаправляти запити до Cloudflare AI через ваш власний Worker, імітуючи API OpenAI, а також оптимізувати використання ресурсів за допомогою Cloudflare KV. У цій статті ми розглянемо процес розгортання та методи обходу лімітів.
+
+---
+
+## Налаштування проєкту
+
+### 1. Підготовка середовища
+
+Для початку переконайтеся, що у вас встановлено **Docker** і **Docker Compose**. Потім виконайте наступні кроки:
+
+- **Створіть файл `.env`** у кореневій директорії проєкту з вашими Cloudflare-даними:
+  ```plaintext
+  CLOUDFLARE_API_TOKEN=your_api_token
+  CLOUDFLARE_ACCOUNT_ID=your_account_id
+  ```
+
+- Завантажте репозиторій проєкту (це буде зроблено автоматично в Dockerfile).
+
+---
+
+### 2. Конфігурація `wrangler.toml`
+
+Файл `wrangler.toml` визначає налаштування вашого Worker’а. Ось приклад конфігурації:
+
+```toml
+name = "ai-forwarder"
+compatibility_date = "2025-02-21"
+main = "src/index.ts"
+assets = { directory = "public", binding = "ASSETS" }
+
+[ai]
+binding = "AI"
+
+[vars]
+DEFAULT_AI_MODEL = "@hf/meta-llama/meta-llama-3-8b-instruct"
+
+[[kv_namespaces]]
+binding = "CACHE"
+id = "0c34b71fd97f428089974a20bc8e04e6"
+preview_id = "523914b9aed14f7a9131b4c6349de83a"
+
+[observability.logs]
+enabled = true
+```
+
+- `name`: Ім’я вашого Worker’а.
+- `compatibility_date`: Дата сумісності для Wrangler.
+- `[ai]`: Прив’язка до Cloudflare AI.
+- `[vars]`: Змінні, наприклад, модель за замовчуванням.
+- `[[kv_namespaces]]`: Налаштування KV для кешування (замініть `id` і `preview_id` на ваші після створення KV namespace).
+
+---
+
+### 3. Створення Dockerfile
+
+Ось Dockerfile для побудови образу з Wrangler і залежностями:
 
 ```dockerfile
-# Використовуємо легковажний образ Node.js Alpine з підтримкою ARM64
 FROM node:18-alpine
 
-# Встановимо необхідні системні пакети
+# 1. Встановлюємо системні пакети
 RUN apk add --no-cache git curl ca-certificates
 
-# Задаємо версії Wrangler та esbuild
-ARG WRANGLER_VERSION=3.25.0
+# 2. Задаємо версії Wrangler та esbuild
+ARG WRANGLER_VERSION=3.109.3
 ARG ESBUILD_VERSION=0.20.1
 
-# Встановлюємо Wrangler та esbuild глобально,
-# очищаємо кеш npm, щоб зменшити розмір образу
+# 3. Встановлюємо Wrangler, esbuild і pnpm глобально
 RUN npm install --global --omit=dev \
     wrangler@${WRANGLER_VERSION} \
     esbuild@${ESBUILD_VERSION} \
+    pnpm@latest \
     && npm cache clean --force
 
-# Переходимо на користувача 'node' (не root) для безпеки
-USER node
+# 4. Створюємо теку /app і надаємо права користувачу node
+RUN mkdir -p /app && chown node:node /app
 
-# Робоча директорія для проєкту
+# 5. Перемикаємося на користувача node
+USER node
 WORKDIR /app
 
-# (1) Клонуємо репозиторій з вихідним кодом (або пізніше змонтуємо його томом)
+# 6. Клонуємо репозиторій
 RUN git clone https://github.com/pa4080/openai-to-cloudflare-ai.git .
 
-# (2) Встановлюємо pnpm, якщо потрібно, і залежності проєкту
-RUN npm install -g pnpm && pnpm install
+# 7. Встановлюємо залежності
+RUN pnpm install
 
-# (3) Копіюємо локальні файли .env та wrangler.toml (у разі потреби)
-# Якщо будете монтувати .env та wrangler.toml з локальної машини, розкоментуйте рядки нижче:
-# COPY .env /app/.env
-# COPY wrangler.toml /app/wrangler.toml
-
-# Точка входу: за замовчуванням виконуємо команду "wrangler deploy"
-ENTRYPOINT ["wrangler", "deploy"]
+# 8. Задаємо точку входу
+ENTRYPOINT ["wrangler"]
 ```
 
-### Як це працює?
-
-1. **Node:18-alpine**  
-    Легкий базовий образ Alpine Linux з Node.js 18, який добре підходить для ARM64 (Raspberry Pi, Apple Silicon тощо).
-    
-2. **Wrangler та esbuild**  
-    Встановлюємо глобально, аби мати інструменти для розгортання та білду Cloudflare Worker.
-    
-3. **git clone**  
-    Клонуємо вихідний код із GitHub—якщо бажаєте розгортати завжди _свіжий_ код із гілки `main` чи іншої, це зручно.  
-    Якщо хочете локально змінювати код, замість `RUN git clone ...` можна **монтувати** локальну папку з вашим форком/кодом.
-    
-4. **pnpm install**  
-    Встановлюємо залежності проєкту із `package.json`.
-    
-5. **ENV-файли**  
-    Ви можете додати у контейнер файли `.env` та `wrangler.toml` через `COPY`, або **монтувати** їх з локальної машини, щоб не зберігати секретну інформацію всередині образу.
-    
-6. **ENTRYPOINT**  
-    За замовчуванням виконує `wrangler deploy`, щоб після запуску контейнера одразу розгортати на Cloudflare.  
-    За потреби можете змінити на `["wrangler", "dev"]` або іншу команду.
-    
+Цей файл:
+- Використовує Node.js 18 на базі Alpine Linux.
+- Встановлює Wrangler, esbuild і pnpm глобально.
+- Клонує проєкт і встановлює його залежності.
 
 ---
 
-## 2. Використання контейнера
+### 4. Налаштування `docker-compose.yml`
 
-### 2.1. Збірка образу
+Файл `docker-compose.yml` дозволяє запускати різні команди Wrangler:
 
-```bash
-docker build -t openai-cf-ai .
+```yaml
+version: "3.9"
+
+services:
+  base:
+    image: ktoschu/wrangler3-109-3-arm-alpine:latest
+    container_name: wrangler-base
+    env_file:
+      - .env
+    volumes:
+      - ./:/app
+    working_dir: /app
+    command: ["echo", "Base service: use docker-compose run <service> for commands"]
+
+  create-kv:
+    image: ktoschu/wrangler3-109-3-arm-alpine:latest
+    container_name: wrangler-create-kv
+    env_file:
+      - .env
+    volumes:
+      - ./:/app
+    working_dir: /app
+    command: ["kv:namespace", "create", "KV"]
+
+  create-kv-preview:
+    image: ktoschu/wrangler3-109-3-arm-alpine:latest
+    container_name: wrangler-create-kv-preview
+    env_file:
+      - .env
+    volumes:
+      - ./:/app
+    working_dir: /app
+    command: ["kv:namespace", "create", "KV", "--preview"]
+
+  install:
+    image: ktoschu/wrangler3-109-3-arm-alpine:latest
+    container_name: wrangler-install
+    env_file:
+      - .env
+    volumes:
+      - ./:/app
+    working_dir: /app
+    command: ["pnpm", "install"]
+
+  deploy:
+    image: ktoschu/wrangler3-109-3-arm-alpine:latest
+    container_name: wrangler-deploy
+    env_file:
+      - .env
+    volumes:
+      - ./:/app
+    working_dir: /app
+    command: ["deploy"]
+
+  dev:
+    image: ktoschu/wrangler3-109-3-arm-alpine:latest
+    container_name: wrangler-dev
+    env_file:
+      - .env
+    volumes:
+      - ./:/app
+    working_dir: /app
+    command: ["dev"]
 ```
-
-- Прапорець `-t` дозволяє задати ім'я образу.
-
-### 2.2. Запуск контейнера
-
-#### Вариант A: З клонованим репозиторієм усередині образу
-
-```bash
-docker run \
-  -e CLOUDFLARE_API_TOKEN=your_api_token_here \
-  -e CLOUDFLARE_ACCOUNT_ID=your_account_id_here \
-  openai-cf-ai
-```
-
-- Під час запуску передаємо **секрети** (Cloudflare API Token / Account ID), щоб `wrangler deploy` зміг підключитися до Cloudflare.
-- Також можна додавати інші змінні середовища, які потрібні у `.env`, наприклад `API_KEY`, `CLOUDFLARE_WORKER_URL` тощо.
-
-#### Вариант B: Монтування локального коду та конфігів
-
-1. Створіть локальні файли `.env` та `wrangler.toml` у поточній текі.
-2. Запустіть контейнер, **змонтувавши** поточну теку (або будь-яку іншу з кодом) у `/app`:
-
-```bash
-docker run --rm -it \
-  -v $(pwd):/app \
-  -e CLOUDFLARE_API_TOKEN=your_api_token_here \
-  -e CLOUDFLARE_ACCOUNT_ID=your_account_id_here \
-  openai-cf-ai
-```
-
-- Так код і `.env` будуть читатися з вашої локальної директорії.
-- Можна додатково налаштувати `:ro` (read-only), якщо не плануєте змінювати файли під час запуску.
 
 ---
 
-## 3. Поради щодо подолання обмежень безкоштовного білінгу
+### 5. Розгортання проєкту
 
-1. **Використовуйте потоковий режим**  
-    Ендпоінт `/v1/chat/completions` з параметром `stream: true` дає змогу надсилати довгі відповіді частинами, обходячи обмеження на розмір одного респонсу.
-    
-2. **Розбивайте довгі запити**  
-    Якщо ваш запит занадто великий або обробка займає багато часу, розділіть його на кілька коротших частин і надсилайте їх по черзі.
-    
-3. **Кешуйте відповіді**  
-    У `wrangler.toml` додайте [KV namespaces](https://developers.cloudflare.com/workers/platform/env-vars/) і використовуйте їх для кешування частих запитів/відповідей, щоб зменшити кількість звернень до моделі.
-    
-4. **Оптимізуйте параметри моделі**
-    
-    - Знижуйте `max_tokens` для коротших відповідей.
-    - Використовуйте менш ресурсоємну модель (через `/v1/models`).
-5. **Моніторьте логи**  
-    Запускайте `wrangler tail`, аби в реальному часі відстежувати, чи не перевищуються ліміти часу/пам’яті.
-    
+1. **Побудуйте образ**:
+   ```bash
+   docker build -t wrangler-custom .
+   ```
+   (Або використовуйте готовий образ `ktoschu/wrangler3-109-3-arm-alpine:latest`).
+
+2. **Створіть KV namespace**:
+   ```bash
+   docker-compose run create-kv
+   docker-compose run create-kv-preview
+   ```
+   Оновіть `wrangler.toml` з отриманими `id` і `preview_id`.
+
+3. **Встановіть залежності**:
+   ```bash
+   docker-compose run install
+   ```
+
+4. **Розгорніть проєкт**:
+   ```bash
+   docker-compose run deploy
+   ```
+
+5. **Тестування локально (опціонально)**:
+   ```bash
+   docker-compose run dev
+   ```
 
 ---
 
-## 4. Резюме
+## Обхід обмежень Cloudflare AI
 
-- **Dockerfile** (на базі `node:18-alpine`) забезпечує компактне середовище для ARM64.
-- **Wrangler та pnpm** встановлюються автоматично для легкого розгортання та керування залежностями.
-- **Локальне редагування `.env` та `wrangler.toml`** дає змогу безпечно працювати з секретами й параметрами середовища.
-- **Потокова обробка**, **розбиття запитів** та **кешування** через KV **дозволяють подолати** обмеження довжини відповіді та часу виконання на безкоштовному тарифі Cloudflare.
+Тепер, коли проєкт розгорнуто, розглянемо, як обійти обмеження безкоштовного плану Cloudflare AI, зокрема для ендпоінтів потоків:
 
-Таким чином, ви отримуєте **універсальний контейнер** із можливістю швидко оновлювати конфігурації, розгортати на будь-якому ARM64-сервері (чи локально) та запускати сервіс Llama 3 AI через інтерфейс, сумісний з OpenAI.
+### Підтримувані ендпоінти
+- **`/v1/threads` POST**: Створює новий потік.
+- **`/v1/threads/:id` GET**: Отримує дані потоку.
+- **`/v1/threads/:id` POST**: Модифікує потік.
+- **`/v1/threads/:id` DELETE**: Видаляє потік.
+- **`/v1/threads/:id/runs` POST**: Створює виконання для потоку (звичайне або зі стрімінгом).
+
+### Методи оптимізації
+
+1. **Кешування відповідей у KV**  
+   - Зберігайте відповіді на часті запити (наприклад, GET-запити до `/v1/threads/:id`) у Cloudflare KV.  
+   - Приклад: якщо потік не змінився, повертайте кешовані дані замість нового запиту до AI.  
+   - Це зменшує кількість звернень до API.
+
+2. **Збереження стану потоків**  
+   - Для `/v1/threads` і `/v1/threads/:id/runs` зберігайте стан потоків у KV замість створення нових.  
+   - Наприклад, після створення потоку за POST-запитом до `/v1/threads`, запишіть його ID і метадані в KV. При наступних запитах (GET або POST) використовуйте ці дані.
+
+3. **Мінімізація запитів**  
+   - Об’єднуйте операції в одному запиті, де це можливо. Наприклад, модифікацію потоку (`/v1/threads/:id` POST) можна виконувати локально в KV, а потім синхронізувати з AI лише за потреби.
+
+4. **Локальне тестування**  
+   - Використовуйте `docker-compose run dev` для налагодження, щоб не витрачати квоту на реальні запити.
+
+5. **Розподіл навантаження**  
+   - Якщо у вас кілька Worker’ів, розподіляйте запити між ними, щоб уникнути перевищення лімітів одного Worker’а.
+
+---
+
+## Висновок
+
+Розгортання **openai-to-cloudflare-ai** за допомогою Docker і Wrangler дозволяє ефективно використовувати Cloudflare AI у безкоштовному плані. Завдяки кешуванню в KV, оптимізації потоків і локальному тестуванню ви можете значно зменшити кількість запитів і обійти обмеження. Цей підхід ідеально підходить для роботи з потоками (`/v1/threads` і `/v1/threads/:id/runs`), забезпечуючи гнучкість і економію ресурсів. Успіхів у вашому проєкті!
