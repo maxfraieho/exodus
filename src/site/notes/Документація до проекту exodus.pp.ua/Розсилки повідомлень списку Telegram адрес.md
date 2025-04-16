@@ -1,101 +1,115 @@
 ---
-{"title":"розсилки повідомлень списку Telegram адрес","dg-publish":true,"dg-metatags":null,"dg-home":null,"permalink":"/dokumentacziya-do-proektu-exodus-pp-ua/rozsilki-povidomlen-spisku-telegram-adres/","dgPassFrontmatter":true,"noteIcon":""}
+{"title":"Розсилки повідомлень списку Telegram адрес","dg-publish":true,"dg-metatags":null,"dg-home":null,"permalink":"/dokumentacziya-do-proektu-exodus-pp-ua/rozsilki-povidomlen-spisku-telegram-adres/","dgPassFrontmatter":true,"noteIcon":""}
 ---
 
-Налаштування Moon-Userbot для автоматизованої розсилки повідомлень
+
+# Налаштування Moon-Userbot для автоматизованої розсилки повідомлень
+
 Ця стаття описує покроковий процес налаштування Moon-Userbot у Termux на Android для автоматизованої розсилки персоналізованих повідомлень через Telegram. Ми розглянемо встановлення Termux, розгортання бота, створення скриптів для генерації списку отримувачів, розсилки повідомлень, відстеження відповідей і пошуку нових контактів за допомогою OSINT. Усі скрипти наведено у фінальних версіях, які підтримують чотири мови (uk, ru, fr, fa), транслітерацію імен та персоналізовані прохання.
 
-1. Встановлення Termux
+## 1. Встановлення Termux
+
 Termux — це емулятор терміналу для Android, який дозволяє запускати Python-скрипти та керувати Telegram-ботами.
 
-Завантажте Termux:
+### Завантажте Termux:
 
-Завантажте з F-Droid або офіційного GitHub (Termux releases).
-Уникайте Google Play, оскільки версія там застаріла.
+- Завантажте з F-Droid або офіційного GitHub (Termux releases).
+- Уникайте Google Play, оскільки версія там застаріла.
 
-
-Оновіть пакети:
+### Оновіть пакети:
+```bash
 pkg update && pkg upgrade
+```
 
-
-Встановіть необхідні інструменти:
+### Встановіть необхідні інструменти:
+```bash
 pkg install python git nano
 pip install --upgrade pip
+```
 
+### Налаштуйте сховище:
 
-Налаштуйте сховище:
+- Дозвольте доступ до пам'яті:
+```bash
+termux-setup-storage
+```
 
-Дозвольте доступ до пам’яті:termux-setup-storage
+- Перевірте доступ:
+```bash
+ls /storage/emulated/0
+```
 
+### Увімкніть wake-lock:
 
-Перевірте доступ:ls /storage/emulated/0
+- Щоб Termux не вимикався:
+```bash
+termux-wake-lock
+```
 
+## 2. Розгортання Moon-Userbot
 
-
-
-Увімкніть wake-lock:
-
-Щоб Termux не вимикався:termux-wake-lock
-
-
-
-
-
-
-2. Розгортання Moon-Userbot
 Moon-Userbot — це модульний Telegram-бот на основі Pyrogram, який дозволяє автоматизувати розсилку та обробку повідомлень.
 
-Клонуйте репозиторій:
+### Клонуйте репозиторій:
+```bash
 git clone https://github.com/TheMoonBotDev/Moon-Userbot /storage/emulated/0/termux/Moon-Userbot
 cd /storage/emulated/0/termux/Moon-Userbot
+```
 
-
-Встановіть залежності:
+### Встановіть залежності:
+```bash
 pip install -r requirements.txt
+```
 
+### Налаштуйте API:
 
-Налаштуйте API:
+- Отримайте api_id і api_hash на my.telegram.org:
+  - Увійдіть у Telegram.
+  - Перейдіть до "API development tools".
+  - Створіть додаток і скопіюйте api_id та api_hash.
 
-Отримайте api_id і api_hash на my.telegram.org:
-Увійдіть у Telegram.
-Перейдіть до "API development tools".
-Створіть додаток і скопіюйте api_id та api_hash.
+- Відкрийте конфігурацію:
+```bash
+nano config.ini
+```
 
-
-Відкрийте конфігурацію:nano config.ini
-
-Додайте:[pyrogram]
+- Додайте:
+```ini
+[pyrogram]
 api_id = ВАШ_API_ID
 api_hash = ВАШ_API_HASH
+```
 
-Збережіть (Ctrl+O, Enter, Ctrl+X).
+- Збережіть (Ctrl+O, Enter, Ctrl+X).
 
-
-Запустіть бота:
+### Запустіть бота:
+```bash
 python3 main.py
+```
 
+- Увійдіть у Telegram-акаунт (введіть номер телефону та код).
+- Перевірте лог: має бути Imported X modules.
 
-Увійдіть у Telegram-акаунт (введіть номер телефону та код).
-Перевірте лог: має бути Imported X modules.
-
-
-Створіть папку для контактів:
+### Створіть папку для контактів:
+```bash
 mkdir -p /storage/emulated/0/Documents/exodus/olena/Контакти
+```
 
+## 3. Налаштування розсилки
 
-
-
-3. Налаштування розсилки
 Ми створили три основні модулі для розсилки:
 
-generate_recipients.py: Генерує список отримувачів із .md файлів.
-bulk_message.py: Надсилає персоналізовані повідомлення.
-response_tracker.py: Відстежує відповіді, надсилає подяки та видаляє контакти.
-Додатковий модуль telegram_osint.py для пошуку нових контактів.
+- generate_recipients.py: Генерує список отримувачів із .md файлів.
+- bulk_message.py: Надсилає персоналізовані повідомлення.
+- response_tracker.py: Відстежує відповіді, надсилає подяки та видаляє контакти.
+- Додатковий модуль telegram_osint.py для пошуку нових контактів.
 
-3.1. Генерація списку отримувачів (generate_recipients.py)
+### 3.1. Генерація списку отримувачів (generate_recipients.py)
+
 Цей модуль сканує .md файли в папці /storage/emulated/0/Documents/exodus/olena/Контакти, витягує номери телефонів або @ніки, визначає мову та транслітерує імена з латиниці на кирилицю для uk/ru.
-Код:
+
+#### Код:
+```python
 from pyrogram import Client, filters
 import os
 import re
@@ -168,7 +182,7 @@ async def generate_recipients(client, message):
     # Сканування .md файлів
     for filename in os.listdir(contacts_dir):
         if filename.endswith(".md"):
-            # Ім’я отримувача — назва файлу без .md
+            # Ім'я отримувача — назва файлу без .md
             recipient_name = filename[:-3].strip()
 
             # Читання вмісту файлу
@@ -239,33 +253,38 @@ async def generate_recipients(client, message):
         await message.edit(f"Файл {output_file} створено! Знайдено {len(recipients)} контактів.")
     except Exception as e:
         await message.edit(f"Помилка при записі {output_file}: {e}")
+```
 
-Налаштування:
+#### Налаштування:
 
-Збережіть:
+- Збережіть:
+```bash
 nano /storage/emulated/0/termux/Moon-Userbot/modules/generate_recipients.py
+```
 
-Скопіюйте код, збережіть (Ctrl+O, Enter, Ctrl+X).
+- Скопіюйте код, збережіть (Ctrl+O, Enter, Ctrl+X).
 
-Створіть .md файли:
+#### Створіть .md файли:
 
-Наприклад:echo "Телефон: +380930949209" > /storage/emulated/0/Documents/exodus/olena/Контакти/Олена.md
+Наприклад:
+```bash
+echo "Телефон: +380930949209" > /storage/emulated/0/Documents/exodus/olena/Контакти/Олена.md
 echo "@IvanP" > /storage/emulated/0/Documents/exodus/olena/Контакти/Іван\ Петренко.md
+```
 
-
-
-
-Запустіть:
+#### Запустіть:
+```bash
 .generate_recipients
-
+```
 
 Вихід: recipients.txt із рядками ідентифікатор,ім'я,мова.
 
+### 3.2. Розсилка повідомлень (bulk_message.py)
 
-
-3.2. Розсилка повідомлень (bulk_message.py)
 Цей модуль надсилає персоналізовані повідомлення із проханням допомогти знайти Олену Коваленко, адаптовані до мови контакту.
-Код:
+
+#### Код:
+```python
 from pyrogram import Client, filters
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 import asyncio
@@ -292,7 +311,7 @@ async def bulk_send(client, message):
             "uk": "{name}, добрий день! Мене звати [Ваше ім'я]. Моя дружина, Олена Коваленко (можливо, Суворова), перебуває в Швейцарії як біженка. Я шукаю людей, які можуть її знати, щоб допомогти зберегти нашу сім'ю. Якщо ви маєте будь-яку інформацію, будь ласка, зв'яжіться зі мною. Дякую!",
             "ru": "{name}, здравствуйте! Меня зовут [Ваше имя]. Моя жена, Олена Коваленко (возможно, Суворова), находится в Швейцарии как беженка. Я ищу людей, которые могут её знать, чтобы помочь сохранить нашу семью. Если у вас есть какая-либо информация, пожалуйста, свяжитесь со мной. Спасибо!",
             "fr": "{name}, bonjour ! Je m'appelle [Votre nom]. Ma femme, Olena Kovalenko (peut-être Suvorova), est en Suisse en tant que réfugiée. Je cherche des personnes qui pourraient la connaître pour aider à préserver notre famille. Si vous avez des informations, veuillez me contacter. Merci !",
-            "fa": "{name}, سلام! نام من [نام شما] است. همسرم، اولنا کووالنکو (شاید سوورووا)، به عنوان پناهنده در سوئیس است. من به دنبال افرادی هستم که ممکن است او را بشناسند تا به حفظ خانواده‌مان کمک کنم. اگر اطلاعاتی دارید، لطفاً با من تماس بگیرید. متشکرم!"
+            "fa": "{name}, سلام! نام من [نام شما] است. همسرم، اولنا کووالنکو (شاید سوورووا)، به عنوان پناهنده در سوئیس است. من به دنبال افرادی هستم که ممکن است او را بشناسند تا به حفظ خانواده‌مان کمک کنم. اگر اطلاعاتی دارید، لطفاً با من تماس بگیرید. متشکریم!"
         }
 
         for recipient_data in recipients:
@@ -366,26 +385,33 @@ async def stop_bulk_send(client, message):
         await message.edit("Розклад розсилки зупинено!")
     else:
         await message.edit("Розклад розсилки не активний!")
+```
 
-Налаштування:
+#### Налаштування:
 
-Збережіть:nano /storage/emulated/0/termux/Moon-Userbot/modules/bulk_message.py
+- Збережіть:
+```bash
+nano /storage/emulated/0/termux/Moon-Userbot/modules/bulk_message.py
+```
 
-
-Замініть [Ваше ім'я] на ваше ім’я.
-Запустіть:.bulksend
-
+- Замініть [Ваше ім'я] на ваше ім'я.
+- Запустіть:
+```bash
+.bulksend
+```
 
 Повідомлення надсилаються з розкладом о 9:00 щодня.
-Зупиніть розклад:.stopbulksend
+Зупиніть розклад:
+```bash
+.stopbulksend
+```
 
+### 3.3. Відстеження відповідей (response_tracker.py)
 
-
-
-
-3.3. Відстеження відповідей (response_tracker.py)
 Цей модуль реагує на відповіді від контактів, надсилає подяку відповідною мовою, сповіщає @kroschu та видаляє контакт із recipients.txt.
-Код:
+
+#### Код:
+```python
 from pyrogram import Client, filters
 import os
 
@@ -466,19 +492,26 @@ async def track_response(client, message):
 
     except Exception as e:
         print(f"Помилка при обробці відповіді від {name} ({identifier}): {e}")
+```
 
-Налаштування:
+#### Налаштування:
 
-Збережіть:nano /storage/emulated/0/termux/Moon-Userbot/modules/response_tracker.py
+- Збережіть:
+```bash
+nano /storage/emulated/0/termux/Moon-Userbot/modules/response_tracker.py
+```
 
+- Перевірте, чи @kroschu доступний для userbot:
+```bash
+python3 -c "from pyrogram import Client; Client('userbot').start().send_message('@kroschu', 'Тест').stop()"
+```
 
-Перевірте, чи @kroschu доступний для userbot:python3 -c "from pyrogram import Client; Client('userbot').start().send_message('@kroschu', 'Тест').stop()"
+### 3.4. Пошук нових контактів (telegram_osint.py)
 
-
-
-3.4. Пошук нових контактів (telegram_osint.py)
 Цей модуль шукає Telegram-групи за ключовим словом (наприклад, "Ukrainian refugees Switzerland") і витягує учасників для додавання до recipients.txt.
-Код:
+
+#### Код:
+```python
 from pyrogram import Client, filters
 import os
 import asyncio
@@ -539,157 +572,93 @@ async def scrape_members(client, message):
 
 if __name__ == "__main__":
     app.run()
+```
 
-Налаштування:
+#### Налаштування:
 
-Збережіть:nano /storage/emulated/0/termux/Moon-Userbot/modules/telegram_osint.py
+- Збережіть:
+```bash
+nano /storage/emulated/0/termux/Moon-Userbot/modules/telegram_osint.py
+```
 
+- Запустіть:
+```bash
+.find_groups
+```
 
-Запустіть:.find_groups
+- Отримайте telegram_groups.txt.
 
-
-Отримайте telegram_groups.txt.
-
-
-Виберіть групу та виконайте:.scrape_members
-
-
-Отримайте telegram_members.txt.
-
-
-Додайте контакти:cat telegram_members.txt >> recipients.txt
-
-
-
-
-4. Тестування системи
-
-Підготовка:
-
-Переконайтеся, що recipients.txt містить контакти:cat /storage/emulated/0/termux/Moon-Userbot/recipients.txt
-
-
-Тестовий приклад:echo -e "@testuser1,Тест Український,uk\n@testuser2,Тест Русский,ru" > recipients.txt
-
-
-
-
-Генерація:
-.generate_recipients
-
-
-Перевірте recipients.txt.
-
-
-Розсилка:
-.bulksend
-
-
-Перевірте, чи контакти отримали повідомлення:
-Тест Український, добрий день! ...
-Тест Русский, здравствуйте! ...
-
-
-
-
-Відповіді:
-
-Надішліть відповідь від @testuser1: Дякую за повідомлення.
-Очікуйте:
-Подяку: Тест Український, дякуємо за вашу відповідь!.
-Сповіщення @kroschu: !!! Відповідь від Тест Український (@testuser1): Дякую за повідомлення !!!.
-Видалення з recipients.txt.
-
-
-
-
-OSINT:
-
-Виконайте:.find_groups
+- Виберіть групу та виконайте:
+```bash
 .scrape_members
+```
 
+- Отримайте telegram_members.txt.
 
-Додайте нові контакти до recipients.txt.
+- Додайте контакти:
+```bash
+cat telegram_members.txt >> recipients.txt
+```
 
+## 4. Тестування системи
 
+### Підготовка:
 
+- Переконайтеся, що recipients.txt містить контакти:
+```bash
+cat /storage/emulated/0/termux/Moon-Userbot/recipients.txt
+```
 
-5. Вирішення проблем
+- Тестовий приклад:
+```bash
+echo -e "@testuser1,Тест Український,uk\n@testuser2,Тест Русский,ru" > recipients.txt
+```
 
-Termux вимикається:
+### Генерація:
+```bash
+.generate_recipients
+```
 
-Увімкніть wake-lock:termux-wake-lock
+- Перевірте recipients.txt.
 
+### Розсилка:
+```bash
+.bulksend
+```
 
-Вимкніть оптимізацію батареї в налаштуваннях Android.
+- Перевірте, чи контакти отримали повідомлення:
+  - Тест Український, добрий день! ...
+  - Тест Русский, здравствуйте! ...
 
+### Відповіді:
 
-Помилка Flood control:
+- Надішліть відповідь від @testuser1: Дякую за повідомлення.
+- Очікуйте:
+  - Подяку: Тест Український, дякуємо за вашу відповідь!.
+  - Сповіщення @kroschu: !!! Відповідь від Тест Український (@testuser1): Дякую за повідомлення !!!.
+  - Видалення з recipients.txt.
 
-Збільште затримку в bulk_message.py:await asyncio.sleep(2)
+### OSINT:
 
+- Виконайте:
+```bash
+.find_groups
+.scrape_members
+```
 
+- Додайте нові контакти до recipients.txt.
 
+## 5. Вирішення проблем
 
-Контакт не видаляється:
+### Termux вимикається:
 
-Перевірте формат recipients.txt:cat recipients.txt
+- Увімкніть wake-lock:
+```bash
+termux-wake-lock
+```
 
+- Вимкніть оптимізацію батареї в налаштуваннях Android.
 
-Лог помилок:cat log.txt | grep "Помилка"
+### Помилка Flood control:
 
-
-
-
-OSINT не працює:
-
-Перевірте доступ до груп:python3 -c "from pyrogram import Client; Client('userbot').start().get_chat('@UkrRefugeesCH').stop()"
-
-
-Оновіть search_query у telegram_osint.py.
-
-
-
-
-6. Рекомендації
-
-Логи:
-
-Зберігайте:python3 main.py > log.txt 2>&1
-
-
-
-
-Етика:
-
-Надсилайте ввічливі повідомлення.
-Використовуйте OSINT лише для публічних даних.
-Дотримуйтесь законів Швейцарії про захист даних.
-
-
-Оптимізація:
-
-Фільтруйте контакти зі Швейцарії:grep "+417" recipients.txt > swiss_contacts.txt
-
-
-Тестуйте на малих групах:head -n 5 recipients.txt > test_recipients.txt
-mv test_recipients.txt recipients.txt
-
-
-
-
-Розклад:
-
-Розсилка запланована на 9:00 щодня.
-Зупиніть:.stopbulksend
-
-
-
-
-
-
-7. Висновок
-Ця система дозволяє автоматизувати розсилку персоналізованих повідомлень для пошуку людей у Швейцарії, з підтримкою чотирьох мов, транслітерацією та відстеженням відповідей. OSINT-модуль розширює список контактів через Telegram-групи, зберігаючи етичний підхід. Для масштабування додайте нові джерела (сайти діаспори, форуми) або уточніть критерії пошуку.
-Якщо потрібні зміни (наприклад, новий текст повідомлення або підтримка інших платформ), звертайтеся до документації Pyrogram або додавайте модулі.
-
-Теги: #MoonUserbot #Termux #Telegram #OSINT #Розсилка #Python
+- Збільште затримку в bulk
