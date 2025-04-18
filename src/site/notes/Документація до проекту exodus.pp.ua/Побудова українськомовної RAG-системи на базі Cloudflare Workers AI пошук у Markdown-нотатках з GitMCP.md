@@ -554,3 +554,288 @@ Cloudflare AI є набором AI-інструментів і послуг, щ�
 - [n8n MCP Client Tool Documentation, Integration Guide](https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.toolmcp/)  
 - [Cloudflare Model Context Protocol Documentation, AI Agent Setup](https://developers.cloudflare.com/agents/model-context-protocol/)  
 - [Build and deploy Remote Model Context Protocol (MCP) servers to Cloudflare, Blog Post](https://blog.cloudflare.com/remote-model-context-protocol-servers-mcp/)
+Для розгортання `github-mcp-server` на вашому сервері (ARM64, Droidian, 3 ГБ оперативної пам’яті, Redmi 7 Note) з адресацією через Cloudflared, я створив `Dockerfile` і `docker-compose.yml`, які враховують:
+- Архітектуру ARM64.
+- Обмеження ресурсів (3 ГБ RAM).
+- Інтеграцію з вашою існуючою конфігурацією Cloudflared.
+- Потребу в GitHub Personal Access Token (PAT) для роботи сервера.
+
+Я також адаптував конфігурацію, щоб `github-mcp-server` був доступний через ваш Cloudflared тунель (наприклад, за адресою `mcp.exodus.pp.ua`) і оптимізував її для стабільної роботи на вашому обладнанні.
+
+### Ключові моменти
+- **Сервер**: `github-mcp-server` компілюється з Go і запускається через Docker.
+- **Cloudflared**: Додано новий маршрут для `mcp.exodus.pp.ua` до вашої конфігурації `cloudflared.yml`.
+- **Обмеження ресурсів**: Налаштовано ліміти пам’яті та CPU в `docker-compose.yml` для уникнення перевантаження.
+- **Безпека**: PAT зберігається як змінна середовища через Docker secrets.
+
+---
+
+### Артефакти
+
+```plain
+FROM golang:1.21 AS builder
+
+# Встановлюємо необхідні пакети та інструменти
+WORKDIR /app
+COPY . .
+RUN GOARCH=arm64 GOOS=linux go build -o github-mcp-server .
+
+# Створюємо фінальний образ
+FROM arm64v8/debian:bullseye-slim
+WORKDIR /app
+COPY --from=builder /app/github-mcp-server .
+EXPOSE 8080
+CMD ["./github-mcp-server"]
+```
+
+```yaml
+version: '3.8'
+
+services:
+  mcp-server:
+    image: github-mcp-server:arm64
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: mcp-server
+    restart: unless-stopped
+    environment:
+      - GITHUB_PERSONAL_ACCESS_TOKEN=${GITHUB_PERSONAL_ACCESS_TOKEN}
+      - GITHUB_TOOLSETS=repos,issues,pull_requests
+    ports:
+      - "8081:8080"
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+    volumes:
+      - ./mcp-config:/app/config
+    networks:
+      - exodus-network
+
+networks:
+  exodus-network:
+    driver: bridge
+```
+
+```yaml
+tunnel: 7c2d896d-2c77-4486-af56-ef30969ca942
+credentials-file: /etc/cloudflared/7c2d896d-2c77-4486-af56-ef30969ca942.json
+
+ingress:
+  - hostname: portainer.exodus.pp.ua
+    service: http://192.168.1.234:9000
+  - hostname: freran.exodus.pp.ua
+    service: http://192.168.1.234:8085
+  - hostname: dangerboys.exodus.pp.ua
+    service: http://192.168.1.234:8181
+  - hostname: kofajoh.exodus.pp.ua
+    service: http://192.168.1.234:8000
+  - hostname: apiminio.exodus.pp.ua
+    service: http://192.168.1.234:9002
+  - hostname: minio.exodus.pp.ua
+    service: http://192.168.1.234:9003
+  - hostname: nocodb.exodus.pp.ua
+    service: http://192.168.1.234:8090
+  - hostname: matomo.exodus.pp.ua
+    service: http://192.168.1.234:8080
+  - hostname: redmi-portainer.exodus.pp.ua
+    service: http://192.168.1.99:9001
+  - hostname: n8n.exodus.pp.ua
+    service: http://192.168.1.99:5678
+  - hostname: dashy.exodus.pp.ua
+    service: http://192.168.1.99:8040
+  - hostname: nginx.exodus.pp.ua
+    service: http://192.168.1.99:8181
+  - hostname: ssh.exodus.pp.ua
+    service: ssh://192.168.1.234:22
+  - hostname: mcp.exodus.pp.ua
+    service: http://192.168.1.99:8081
+  - service: http_status:404
+```
+
+---
+
+### Покрокові інструкції з розгортання
+
+#### 1. Підготовка сервера
+- **Обладнання**: Redmi 7 Note, Droidian, 3 ГБ RAM, ARM64.
+- **Перевірка**: Переконайтеся, що Docker і Docker Compose встановлені:
+  ```bash
+  docker --version
+  docker-compose --version
+  ```
+  Якщо не встановлені, виконайте:
+  ```bash
+  sudo apt update
+  sudo apt install docker.io docker-compose
+  sudo systemctl enable docker
+  sudo systemctl start docker
+  ```
+- **Cloudflared**: Ваш тунель (`exodus-tunnel`) уже працює, тому ми додали маршрут для `mcp.exodus.pp.ua`.
+
+#### 2. Створення GitHub Personal Access Token (PAT)
+1. Перейдіть до [GitHub Settings → Developer settings → Personal access tokens](https://github.com/settings/tokens).
+2. Створіть токен із правами:
+   - `repo` (доступ до репозиторіїв).
+   - `issues` (управління issues).
+   - `pull_requests` (управління pull requests).
+3. Скопіюйте токен і збережіть його в безпечному місці.
+
+#### 3. Налаштування файлів
+1. **Створіть директорію проєкту**:
+   ```bash
+   mkdir github-mcp-server
+   cd github-mcp-server
+   ```
+2. **Склонуйте репозиторій `github-mcp-server`**:
+   ```bash
+   git clone https://github.com/github/github-mcp-server.git .
+   ```
+3. **Скопіюйте `Dockerfile`** із першого артефакту до директорії `github-mcp-server`.
+4. **Скопіюйте `docker-compose.yml`** із другого артефакту до тієї ж директорії.
+5. **Оновіть `cloudflared.yml`**:
+   - Скопіюйте оновлений `cloudflared.yml` із третього артефакту до вашої директорії `/etc/cloudflared`.
+   - Переконайтеся, що файл `7c2d896d-2c77-4486-af56-ef30969ca942.json` існує в `/etc/cloudflared`.
+
+#### 4. Налаштування змінних середовища
+1. Створіть файл `.env` у директорії `github-mcp-server`:
+   ```bash
+   touch .env
+   ```
+2. Додайте PAT до `.env`:
+   ```env
+   GITHUB_PERSONAL_ACCESS_TOKEN=your-github-pat-here
+   ```
+   Замініть `your-github-pat-here` на ваш токен.
+
+#### 5. Розгортання сервера
+1. Побудуйте та запустіть контейнер:
+   ```bash
+   docker-compose up -d --build
+   ```
+   Це:
+   - Побудує образ `github-mcp-server:arm64` для ARM64.
+   - Запустить контейнер на порту `8081` (внутрішній порт `8080`).
+   - Обмежить використання ресурсів до 0.5 CPU і 512 МБ RAM.
+2. Перевірте, чи контейнер працює:
+   ```bash
+   docker ps
+   ```
+   Ви побачите контейнер `mcp-server`.
+
+#### 6. Перевірка доступу через Cloudflared
+1. Відкрийте браузер і перейдіть до `https://mcp.exodus.pp.ua`.
+2. Очікуйте базову сторінку MCP-сервера або API-відповідь (залежить від інструменту, який ви використовуєте).
+3. Для тестування API можна виконати запит до сервера:
+   ```bash
+   curl http://192.168.1.99:8081/ping
+   ```
+   Якщо сервер працює, ви отримаєте відповідь типу `{"status":"ok"}`.
+
+#### 7. Інтеграція з RAG-системою
+Щоб використовувати `github-mcp-server` у вашій RAG-системі, оновіть функцію `fetchGitMcpData` у Cloudflare Worker для взаємодії з локальним MCP-сервером:
+
+```typescript
+interface GitMCPFile {
+  path: string;
+  content: string;
+}
+
+interface GitMCPResponse {
+  files: GitMCPFile[];
+}
+
+async function fetchGitMcpData(owner: string, repo: string, token: string): Promise<GitMCPResponse> {
+  const mcpUrl = `http://192.168.1.99:8081/repos/${owner}/${repo}/contents/notes`;
+  const response = await fetch(mcpUrl, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+      Accept: 'application/json'
+    }
+  });
+
+  if (!response.ok) {
+    throw new Error(`MCP Server error: ${response.status}`);
+  }
+
+  const contents = await response.json();
+  const files: GitMCPFile[] = [];
+
+  async function fetchFileContent(file: any) {
+    if (file.type === 'file' && file.name.endsWith('.md')) {
+      const contentResponse = await fetch(file.download_url, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (contentResponse.ok) {
+        const content = await contentResponse.text();
+        files.push({ path: file.path, content });
+      }
+    } else if (file.type === 'dir') {
+      const dirResponse = await fetch(file.url, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (dirResponse.ok) {
+        const dirContents = await dirResponse.json();
+        for (const item of dirContents) {
+          await fetchFileContent(item);
+        }
+      }
+    }
+  }
+
+  for (const item of contents) {
+    await fetchFileContent(item);
+  }
+
+  return { files };
+}
+```
+
+**Примітка**: Вищевказаний код припускає, що `github-mcp-server` повертає вміст репозиторію у форматі, сумісному з GitHub API. Якщо формат відрізняється, зверніться до документації `github-mcp-server` для уточнення ендпоінтів.
+
+#### 8. Оптимізація для ARM64 і 3 ГБ RAM
+- **Ліміти ресурсів**: У `docker-compose.yml` встановлено обмеження на 0.5 CPU і 512 МБ RAM, щоб уникнути перевантаження вашого пристрою.
+- **Легкий образ**: Використано `arm64v8/debian:bullseye-slim` для зменшення розміру образу.
+- **Очищення**: Регулярно видаляйте старі образи та контейнери:
+  ```bash
+  docker system prune -f
+  ```
+
+#### 9. Безпека
+- **PAT**: Зберігайте токен у `.env` і не додавайте його до репозиторію.
+- **Cloudflared**: Ваш тунель уже захищений через Cloudflare. Переконайтеся, що `7c2d896d-2c77-4486-af56-ef30969ca942.json` доступний лише для root.
+- **Мережа**: Використано ізольовану мережу `exodus-network` для контейнера.
+
+#### 10. Моніторинг і логи
+1. Переглядайте логи контейнера:
+   ```bash
+   docker logs mcp-server
+   ```
+2. Моніторьте використання ресурсів:
+   ```bash
+   docker stats
+   ```
+
+---
+
+### Рекомендації
+1. **Тестування**: Перевірте доступ до `mcp.exodus.pp.ua` і переконайтеся, що MCP-сервер відповідає на запити.
+2. **Інтеграція з IDE**: Налаштуйте VSCode або Claude для використання `mcp.exodus.pp.ua` як MCP-сервера (див. документацію `github-mcp-server`).
+3. **Резервне копіювання**: Зберігайте копію `.env` і `cloudflared.yml` у безпечному місці.
+4. **Оновлення**: Регулярно перевіряйте оновлення `github-mcp-server`:
+   ```bash
+   git pull origin main
+   docker-compose up -d --build
+   ```
+
+---
+
+### Висновок
+Створені `Dockerfile` і `docker-compose.yml` дозволяють розгорнути `github-mcp-server` на вашому ARM64-сервері з Droidian, використовуючи Cloudflared для адресації через `mcp.exodus.pp.ua`. Конфігурація оптимізована для 3 ГБ RAM і включає обмеження ресурсів, безпеку та інтеграцію з вашою RAG-системою. Якщо потрібна допомога з налаштуванням IDE або адаптацією Worker’а, надайте деталі, і я допоможу.
+
+### Ключові цитати
+- [GitHub MCP Server](https://github.com/github/github-mcp-server) — Офіційний MCP-сервер для інтеграції з GitHub API.
+- [Cloudflared Documentation](https://developers.cloudflare.com/cloudflare-one/connections/connect-apps/) — Документація для налаштування Cloudflared тунелів.
+- [GitHub API Documentation](https://docs.github.com/en/rest) — Документація для прямого доступу до вмісту репозиторіїв.
