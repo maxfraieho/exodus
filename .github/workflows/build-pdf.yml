@@ -79,7 +79,7 @@ jobs:
           aws --endpoint-url https://apiminio.exodus.pp.ua \
             s3 cp repository.xml s3://exodusbase/repository.xml \
             --content-type application/xml
-          
+
           if [[ $? -ne 0 ]]; then
             echo "Помилка під час завантаження XML"
             exit 1
