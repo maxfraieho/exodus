@@ -78,7 +78,7 @@ jobs:
           
           aws --endpoint-url https://apiminio.exodus.pp.ua \
               s3api put-object \
-              --bucket exodusbase \
+              --bucket exodusppua \
               --key "repository.xml" \
               --body "repository.xml" \
               --content-type application/xml \
