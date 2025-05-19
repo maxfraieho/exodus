@@ -76,16 +76,10 @@ jobs:
         run: |
           echo "Uploading repository.xml to MinIO via Cloudflare Tunnel"
           
-          aws --endpoint-url https://apiminio.exodus.pp.ua \
-    s3api put-object \
-    --bucket exodusppua \
-    --key "repository.xml" \
-    --body "repository.xml" \
-    --content-type application/xml \
-    --cli-read-timeout 600 \
-    --cli-connect-timeout 600 \
-    --no-verify-ssl \
-    --debug
+         aws --endpoint-url https://apiminio.exodus.pp.ua \
+         s3 cp repository.xml s3://exodusbase/repository.xml \
+         --content-type application/xml
+
 
 
           if [[ $? -ne 0 ]]; then
