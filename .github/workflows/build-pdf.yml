@@ -77,13 +77,16 @@ jobs:
           echo "Uploading repository.xml to MinIO via Cloudflare Tunnel"
           
           aws --endpoint-url https://apiminio.exodus.pp.ua \
-              s3api put-object \
-              --bucket exodusppua \
-              --key "repository.xml" \
-              --body "repository.xml" \
-              --content-type application/xml \
-              --cli-read-timeout 360 \
-              --cli-connect-timeout 360
+    s3api put-object \
+    --bucket exodusppua \
+    --key "repository.xml" \
+    --body "repository.xml" \
+    --content-type application/xml \
+    --cli-read-timeout 600 \
+    --cli-connect-timeout 600 \
+    --no-verify-ssl \
+    --debug
+
 
           if [[ $? -ne 0 ]]; then
             echo "Помилка під час завантаження XML"
