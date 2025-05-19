@@ -27,29 +27,29 @@ jobs:
           sudo apt-get install -y unzip
         # Встановлює unzip для розпакування AWS CLI
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
+      - name: Pack repository with Repomix
+        uses: yamadashy/repomix/.github/actions/repomix@main
         with:
-          node-version: "18"
-        # Налаштовує Node.js 18 для роботи з repomix
+          output: repository.xml
+          additional-args: --config repomix.config.json
+        # Використовує дію repomix із конфігураційним файлом
 
-      - name: Install Repomix
-        run: npm install -g repomix
-        # Встановлює repomix глобально
-
-      - name: Generate Repository XML
+      - name: Verify generated XML
         run: |
-          repomix --config repomix.config.json
-          if [[ $? -ne 0 ]]; then
-            echo "Помилка: repomix завершився з помилкою"
-            exit 1
-          fi
           if [ ! -s repository.xml ]; then
             echo "Помилка: XML-файл порожній або не створений"
             exit 1
           fi
           echo "Згенеровано repository.xml розміром $(stat -c%s repository.xml) байт"
-        # Генерує XML і перевіряє результат
+        # Перевіряє, що XML-файл створено і не порожній
+
+      - name: Upload Repomix output as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: repository-xml
+          path: repository.xml
+          retention-days: 7
+        # Завантажує XML як артефакт для дебагінгу
 
       - name: Install AWS CLI v2
         run: |
