@@ -148,22 +148,81 @@ jobs:
         run: |
           for xml_file in xml-outputs/*.xml; do
             bucket_name=$(basename "$xml_file" .xml)
+            echo "📤 Завантаження файлу: $xml_file -> minio/$bucket_name/"
+            
+            # Створення бакету (якщо не існує)
             mc mb -q --ignore-existing minio/$bucket_name
+            
+            # Копіювання файлу
             mc cp "$xml_file" "minio/$bucket_name/${bucket_name}.xml"
+            
+            # Додаємо затримку після копіювання
+            echo "⏳ Очікування синхронізації (5 секунд)..."
+            sleep 5
+            
+            echo "✅ Завантажено: ${bucket_name}.xml"
           done
 
-      # Крок 12: Перевірка завантаження (mc stat)
-      - name: Verify uploaded files
+      # Крок 12: Перевірка завантаження з повторними спробами
+      - name: Verify uploaded files with retry logic
         run: |
           for xml_file in xml-outputs/*.xml; do
             bucket_name=$(basename "$xml_file" .xml)
             local_size=$(wc -c < "$xml_file" | tr -d ' ')
-            remote_size=$(mc stat "minio/$bucket_name/${bucket_name}.xml" | awk '/Size/{print $2}')
-            echo "Файл: $xml_file, локальний розмір: $local_size, розмір на MinIO: $remote_size"
-            if [ "$local_size" = "$remote_size" ]; then
-              echo "✅ Розміри співпадають"
-            else
-              echo "⚠️ Розміри не співпадають!"
+            
+            echo "🔍 Перевірка файлу: ${bucket_name}.xml"
+            echo "📊 Локальний розмір: $local_size байт"
+            
+            # Повторна спроба отримати розмір з затримкою
+            remote_size=""
+            for attempt in {1..5}; do
+              echo "🔄 Спроба $attempt з 5..."
+              
+              # Отримуємо повний вивід mc stat для діагностики
+              stat_output=$(mc stat "minio/$bucket_name/${bucket_name}.xml" 2>&1)
+              
+              if [ $? -eq 0 ]; then
+                remote_size=$(echo "$stat_output" | awk '/Size/{print $2}' | tr -d ' ')
+                
+                if [ -n "$remote_size" ] && [ "$remote_size" != "0" ]; then
+                  echo "📊 Розмір на MinIO: $remote_size байт"
+                  break
+                fi
+              fi
+              
+              echo "⏳ Очікування 3 секунди перед наступною спробою..."
+              sleep 3
+            done
+            
+            # Перевірка результату
+            if [ -z "$remote_size" ] || [ "$remote_size" = "0" ]; then
+              echo "❌ Не вдалося отримати розмір файлу після 5 спроб"
+              echo "🔍 Діагностичний вивід mc stat:"
+              mc stat "minio/$bucket_name/${bucket_name}.xml" || true
               exit 1
             fi
+            
+            if [ "$local_size" = "$remote_size" ]; then
+              echo "✅ Розміри співпадають ($local_size байт)"
+            else
+              echo "⚠️ Розміри не співпадають!"
+              echo "📊 Локальний: $local_size байт"
+              echo "📊 Віддалений: $remote_size байт"
+              echo "🔍 Додаткова діагностика:"
+              mc stat "minio/$bucket_name/${bucket_name}.xml" || true
+              exit 1
+            fi
+          done
+          
+          echo "🎉 Всі файли успішно завантажені та перевірені!"
+
+      # Крок 13: Додаткова перевірка списку файлів (опціонально)
+      - name: List all uploaded files
+        run: |
+          echo "📋 Список всіх завантажених файлів:"
+          for xml_file in xml-outputs/*.xml; do
+            bucket_name=$(basename "$xml_file" .xml)
+            echo "🗂️ Бакет: $bucket_name"
+            mc ls "minio/$bucket_name/" || true
+            echo "---"
           done
