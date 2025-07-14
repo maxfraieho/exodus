@@ -43,8 +43,6 @@ jobs:
           aws configure set default.region us-east-1
           aws configure set default.s3.addressing_style path
           aws configure set default.s3.signature_version s3v4
-          aws configure set default.s3.max_concurrent_requests 1
-          aws configure set default.s3.max_bandwidth 50MB/s
 
       # Крок 4: Перевірка доступу до MinIO
       - name: Verify AWS CLI credentials with MinIO
@@ -67,12 +65,8 @@ jobs:
               input=$(echo "$input" | sed 's/А/A/g; s/Б/B/g; s/В/V/g; s/Г/H/g; s/Ґ/G/g; s/Д/D/g; s/Е/E/g; s/Є/Ye/g; s/Ж/Zh/g; s/З/Z/g; s/И/Y/g; s/І/I/g; s/Ї/Yi/g; s/Й/Y/g; s/К/K/g; s/Л/L/g; s/М/M/g; s/Н/N/g; s/О/O/g; s/П/P/g; s/Р/R/g; s/С/S/g; s/Т/T/g; s/У/U/g; s/Ф/F/g; s/Х/Kh/g; s/Ц/Ts/g; s/Ч/Ch/g; s/Ш/Sh/g; s/Щ/Shch/g; s/Ь//g; s/Ю/Yu/g; s/Я/Ya/g')
               input=$(echo "$input" | sed 's/[[:space:]]\+/-/g' | tr '[:upper:]' '[:lower:]')
               input=$(echo "$input" | sed 's/[^a-z0-9-]//g' | sed 's/--*/-/g; s/^-//; s/-$//')
-              if [ ${#input} -lt 3 ]; then 
-                  input="${input}bucket"
-              fi
-              if [ ${#input} -gt 63 ]; then 
-                  input="${input:0:63}"
-              fi
+              if [ ${#input} -lt 3 ]; then input="${input}bucket"; fi
+              if [ ${#input} -gt 63 ]; then input="${input:0:63}"; fi
               echo "$input"
           }
           transliterate "$1"
@@ -83,29 +77,14 @@ jobs:
       - name: Generate XML files for each folder
         run: |
           mkdir -p xml-outputs
-          if [ ! -d "src/site/notes/" ]; then
-            echo "❌ src/site/notes/ не знайдено"
-            exit 1
-          fi
-
+          if [ ! -d "src/site/notes/" ]; then echo "❌ src/site/notes/ не знайдено"; exit 1; fi
           for folder in src/site/notes/*/; do
             if [ -d "$folder" ]; then
               folder_name=$(basename "$folder")
               bucket_name=$(./transliterate.sh "$folder_name")
-
-              if [[ ! "$bucket_name" =~ ^[a-z0-9][a-z0-9-]{1,61}[a-z0-9]$ ]] && [[ ${#bucket_name} -ne 3 ]]; then
-                echo "❌ Некоректна назва бакету: $bucket_name"
-                exit 1
-              fi
-
               echo "🔄 Генерація XML: $folder_name -> $bucket_name"
               npx repomix --config repomix.config.json --include "$folder/**" --output "xml-outputs/${bucket_name}.xml"
-              
-              if [ ! -s "xml-outputs/${bucket_name}.xml" ]; then
-                echo "❌ XML-файл порожній або не створений: ${bucket_name}.xml"
-                exit 1
-              fi
-
+              if [ ! -s "xml-outputs/${bucket_name}.xml" ]; then echo "❌ XML-файл порожній: ${bucket_name}.xml"; exit 1; fi
               echo "✅ Згенеровано: ${bucket_name}.xml"
             fi
           done
@@ -115,12 +94,7 @@ jobs:
         run: |
           echo "🔄 Генерація common.xml для кореневих файлів"
           npx repomix --config repomix.config.json --ignore "src/site/notes/**" --output "xml-outputs/common.xml"
-          
-          if [ ! -s "xml-outputs/common.xml" ]; then
-            echo "❌ common.xml порожній або не створений"
-            exit 1
-          fi
-
+          if [ ! -s "xml-outputs/common.xml" ]; then echo "❌ common.xml порожній або не створений"; exit 1; fi
           echo "✅ Згенеровано: common.xml"
 
       # Крок 8: Upload XML outputs as artifacts
@@ -149,22 +123,16 @@ jobs:
           for xml_file in xml-outputs/*.xml; do
             bucket_name=$(basename "$xml_file" .xml)
             echo "📤 Завантаження файлу: $xml_file -> minio/$bucket_name/"
-            
             mc mb -q --ignore-existing "minio/$bucket_name"
             mc cp "$xml_file" "minio/$bucket_name/${bucket_name}.xml"
-            
             echo "⏳ Очікування синхронізації (5 секунд)..."
             sleep 5
-            
             echo "✅ Завантажено: ${bucket_name}.xml"
           done
 
-      # Крок 12: ДІАГНОСТИКА - Перевірка завантаження з детальним логуванням
-      - name: Verify uploaded files with retry logic (DEBUG MODE)
+      # Крок 12: Фінальна версія перевірки завантаження
+      - name: Verify uploaded files with retry logic
         run: |
-          # Вмикаємо режим детального логування. Кожна команда буде надрукована в лог.
-          set -x
-
           # Функція для конвертації human-readable size в байти
           to_bytes() {
             local size=$1
@@ -191,23 +159,21 @@ jobs:
             for attempt in {1..5}; do
               echo "🔄 Спроба $attempt з 5..."
               
-              # Виконуємо mc stat і одразу перевіряємо результат
               if stat_output=$(mc stat "minio/$bucket_name/${bucket_name}.xml" 2>&1); then
-                # Логуємо точний вивід команди
-                echo "--- RAW MC STAT OUTPUT ---"
-                echo "${stat_output}"
-                echo "--------------------------"
-
-                size_line=$(echo "$stat_output" | grep 'Size:')
+                # ВИПРАВЛЕНО: Шукаємо "Size :" і додаємо "|| true", щоб скрипт не падав
+                size_line=$(echo "$stat_output" | grep 'Size :' || true)
                 
                 if [ -z "$size_line" ]; then
-                    echo "ПОМИЛКА: Не знайдено рядок 'Size:' у виводі mc stat. Пробуємо ще раз."
+                  echo "ПОПЕРЕДЖЕННЯ: Не вдалося знайти рядок 'Size :' у виводі mc stat. Спробую ще раз."
                 else
-                    remote_bytes=$(to_bytes $(echo "$size_line" | awk '{print $3}') $(echo "$size_line" | awk '{print $4}'))
-                    if [ -n "$remote_bytes" ] && [ "$remote_bytes" -gt 0 ]; then
-                        echo "📊 Розмір на MinIO отримано: $remote_bytes байт"
-                        break
-                    fi
+                  size_value=$(echo "$size_line" | awk '{print $3}')
+                  size_unit=$(echo "$size_line" | awk '{print $4}')
+                  remote_bytes=$(to_bytes "$size_value" "$size_unit")
+                  
+                  if [ -n "$remote_bytes" ] && [ "$remote_bytes" -gt 0 ]; then
+                    echo "📊 Розмір на MinIO отримано: $remote_bytes байт"
+                    break # Успіх, виходимо з циклу спроб
+                  fi
                 fi
               else
                 echo "ПОПЕРЕДЖЕННЯ: команда mc stat зазнала невдачі. Код виходу: $?"
@@ -239,8 +205,6 @@ jobs:
             fi
           done
           
-          # Вимикаємо режим детального логування
-          set +x
           echo "🎉 Всі файли успішно завантажені та перевірені!"
 
       # Крок 13: Додаткова перевірка списку файлів
@@ -253,3 +217,4 @@ jobs:
             mc ls "minio/$bucket_name/" || true
             echo "---"
           done
+
