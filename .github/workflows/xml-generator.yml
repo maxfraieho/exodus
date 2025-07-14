@@ -312,7 +312,7 @@ jobs:
         run: |
           mc alias set minio "$MINIO_ENDPOINT_URL" "$AWS_ACCESS_KEY_ID" "$AWS_SECRET_ACCESS_KEY" --api S3v4
 
-      # Крок 11: Завантаження XML-файлів у MinIO через mc
+            # Крок 11: Завантаження XML-файлів у MinIO через mc
       - name: Upload XML files with MinIO Client
         run: |
           for xml_file in xml-outputs/*.xml; do
@@ -321,18 +321,19 @@ jobs:
             mc cp "$xml_file" "minio/$bucket_name/${bucket_name}.xml"
           done
 
-      # Крок 12: Перевірка завантаження (head-об'єкти через awscli або mc stat)
+      # Крок 12: Перевірка завантаження (mc stat)
       - name: Verify uploaded files
         run: |
           for xml_file in xml-outputs/*.xml; do
             bucket_name=$(basename "$xml_file" .xml)
-            local_size=$(wc -c < "$xml_file")
-            remote_size=$(mc stat "minio/$bucket_name/${bucket_name}.xml" | grep Size | awk '{print $2}')
+            local_size=$(wc -c < "$xml_file" | tr -d ' ')
+            remote_size=$(mc stat "minio/$bucket_name/${bucket_name}.xml" | awk '/Size/{print $2}')
             echo "Файл: $xml_file, локальний розмір: $local_size, розмір на MinIO: $remote_size"
-            if [ "$local_size" -eq "$remote_size" ]; then
+            if [ "$local_size" = "$remote_size" ]; then
               echo "✅ Розміри співпадають"
             else
               echo "⚠️ Розміри не співпадають!"
               exit 1
             fi
           done
+
