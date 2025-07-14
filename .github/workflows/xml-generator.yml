@@ -27,11 +27,11 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # Крок 2: Встановлення залежностей і AWS CLI
+      # Крок 2: Встановлення залежностей і AWS CLI (оновлено)
       - name: Install system dependencies and AWS CLI
         run: |
           sudo apt-get update
-          sudo apt-get install -y unzip curl
+          sudo apt-get install -y unzip curl bc
           curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
           unzip -q awscliv2.zip
           sudo ./aws/install --update
@@ -123,7 +123,7 @@ jobs:
 
           echo "✅ Згенеровано: common.xml"
 
-      # Крок 8: Upload XML outputs as artifacts (опціонально)
+      # Крок 8: Upload XML outputs as artifacts
       - name: Upload XML outputs as artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -163,9 +163,22 @@ jobs:
             echo "✅ Завантажено: ${bucket_name}.xml"
           done
 
-      # Крок 12: Перевірка завантаження з повторними спробами
+      # Крок 12: Перевірка завантаження з конвертацією одиниць та допуском
       - name: Verify uploaded files with retry logic
         run: |
+          # Функція для конвертації human-readable size в байти
+          to_bytes() {
+            local size=$1
+            local unit=$2
+            case $unit in
+              KiB) echo $((size * 1024)) ;;
+              MiB) echo $((size * 1024 * 1024)) ;;
+              kB)  echo $((size * 1000)) ;;
+              MB)  echo $((size * 1000 * 1000)) ;;
+              *)   echo $size ;;
+            esac
+          }
+
           for xml_file in xml-outputs/*.xml; do
             bucket_name=$(basename "$xml_file" .xml)
             local_size=$(wc -c < "$xml_file" | tr -d ' ')
@@ -173,19 +186,25 @@ jobs:
             echo "🔍 Перевірка файлу: ${bucket_name}.xml"
             echo "📊 Локальний розмір: $local_size байт"
             
-            # Повторна спроба отримати розмір з затримкою
-            remote_size=""
+            # Повторна спроба отримати розмір
+            remote_bytes=""
             for attempt in {1..5}; do
               echo "🔄 Спроба $attempt з 5..."
               
-              # Отримуємо повний вивід mc stat для діагностики
+              # Отримуємо повний вивід mc stat
               stat_output=$(mc stat "minio/$bucket_name/${bucket_name}.xml" 2>&1)
               
               if [ $? -eq 0 ]; then
-                remote_size=$(echo "$stat_output" | awk '/Size/{print $2}' | tr -d ' ')
+                # Витягуємо числовий розмір і одиницю виміру
+                size_line=$(echo "$stat_output" | grep 'Size :')
+                size_value=$(echo "$size_line" | awk '{print $3}')
+                size_unit=$(echo "$size_line" | awk '{print $4}')
                 
-                if [ -n "$remote_size" ] && [ "$remote_size" != "0" ]; then
-                  echo "📊 Розмір на MinIO: $remote_size байт"
+                # Конвертуємо у байти
+                remote_bytes=$(to_bytes "$size_value" "$size_unit")
+                
+                if [ -n "$remote_bytes" ] && [ "$remote_bytes" -gt 0 ]; then
+                  echo "📊 Розмір на MinIO: $remote_bytes байт ($size_value $size_unit)"
                   break
                 fi
               fi
@@ -194,29 +213,32 @@ jobs:
               sleep 3
             done
             
-            # Перевірка результату
-            if [ -z "$remote_size" ] || [ "$remote_size" = "0" ]; then
+            if [ -z "$remote_bytes" ] || [ "$remote_bytes" = "0" ]; then
               echo "❌ Не вдалося отримати розмір файлу після 5 спроб"
-              echo "🔍 Діагностичний вивід mc stat:"
-              mc stat "minio/$bucket_name/${bucket_name}.xml" || true
               exit 1
             fi
             
-            if [ "$local_size" = "$remote_size" ]; then
-              echo "✅ Розміри співпадають ($local_size байт)"
+            # Допустима різниця у 1% (через різницю у представленні)
+            threshold=$((local_size / 100))
+            diff=$((local_size - remote_bytes))
+            abs_diff=${diff#-}  # модуль різниці
+            
+            if [ $abs_diff -le $threshold ]; then
+              echo "✅ Розміри співпадають (допуск ±$threshold байт)"
+              echo "📊 Локальний: $local_size байт"
+              echo "📊 Віддалений: $remote_bytes байт"
             else
               echo "⚠️ Розміри не співпадають!"
               echo "📊 Локальний: $local_size байт"
-              echo "📊 Віддалений: $remote_size байт"
-              echo "🔍 Додаткова діагностика:"
-              mc stat "minio/$bucket_name/${bucket_name}.xml" || true
+              echo "📊 Віддалений: $remote_bytes байт"
+              echo "🔍 Різниця: $diff байт"
               exit 1
             fi
           done
           
           echo "🎉 Всі файли успішно завантажені та перевірені!"
 
-      # Крок 13: Додаткова перевірка списку файлів (опціонально)
+      # Крок 13: Додаткова перевірка списку файлів
       - name: List all uploaded files
         run: |
           echo "📋 Список всіх завантажених файлів:"
