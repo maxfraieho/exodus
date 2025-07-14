@@ -95,7 +95,8 @@ jobs:
       - name: Generate common XML for root files
         run: |
           echo "🔄 Генерація common.xml для кореневих файлів"
-          npx repomix --config repomix.config.json --exclude "src/site/notes/**" --output "xml-outputs/common.xml"
+          # Використовуємо --ignore замість --exclude
+          npx repomix --config repomix.config.json --ignore "src/site/notes/**" --output "xml-outputs/common.xml"
 
           if [ ! -s "xml-outputs/common.xml" ]; then
             echo "❌ Помилка: common.xml порожній або не створений"
