@@ -31,7 +31,7 @@ jobs:
       - name: Install system dependencies and AWS CLI
         run: |
           sudo apt-get update
-          sudo apt-get install -y unzip curl bc jq # <--- ДОДАНО JQ
+          sudo apt-get install -y unzip curl bc jq
           curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
           unzip -q awscliv2.zip
           sudo ./aws/install --update
@@ -117,6 +117,44 @@ jobs:
         run: |
           mc alias set minio "$MINIO_ENDPOINT_URL" "$AWS_ACCESS_KEY_ID" "$AWS_SECRET_ACCESS_KEY" --api S3v4
 
+      # Крок 10.5: Синхронізація та видалення застарілих бакетів
+      - name: Synchronize buckets (delete obsolete ones)
+        run: |
+          echo "🔄 Починаємо синхронізацію бакетів..."
+          
+          # 1. Створюємо список ОЧІКУВАНИХ бакетів на основі папок у репозиторії
+          declare -a EXPECTED_BUCKETS
+          for folder in src/site/notes/*/; do
+            if [ -d "$folder" ]; then
+              folder_name=$(basename "$folder")
+              bucket_name=$(./transliterate.sh "$folder_name")
+              EXPECTED_BUCKETS+=("$bucket_name")
+            fi
+          done
+          EXPECTED_BUCKETS+=("common") # Завжди додаємо бакет "common"
+          
+          echo "✅ Очікувані бакети згідно з репозиторієм: ${EXPECTED_BUCKETS[*]}"
+
+          # 2. Отримуємо список РЕАЛЬНИХ бакетів з MinIO
+          # awk '{print $NF}' бере останню колонку, sed 's|/||' видаляє слеш в кінці
+          ACTUAL_BUCKETS=($(mc ls minio/ | awk '{print $NF}' | sed 's|/||' || true))
+          echo "🔍 Знайдені бакети на MinIO: ${ACTUAL_BUCKETS[*]}"
+
+          # 3. Порівнюємо списки та видаляємо зайві бакети
+          for bucket in "${ACTUAL_BUCKETS[@]}"; do
+            # Перевіряємо, чи існує реальний бакет у списку очікуваних
+            if [[ ! " ${EXPECTED_BUCKETS[*]} " =~ " ${bucket} " ]]; then
+              echo "🗑️ Бакет '$bucket' є застарілим і буде видалений."
+              # Видаляємо бакет разом з усім його вмістом
+              mc rb --force "minio/$bucket"
+              echo "✅ Бакет '$bucket' успішно видалено."
+            else
+              echo "👍 Бакет '$bucket' актуальний, залишаємо."
+            fi
+          done
+
+          echo "🎉 Синхронізацію бакетів завершено."
+      
       # Крок 11: Завантаження XML-файлів у MinIO через mc
       - name: Upload XML files with MinIO Client
         run: |
@@ -144,7 +182,6 @@ jobs:
             for attempt in {1..5}; do
               echo "🔄 Спроба $attempt з 5..."
               
-              # Запитуємо статус у форматі JSON для надійності
               stat_output=$(mc stat --json "minio/$bucket_name/${bucket_name}.xml" 2>&1)
               exit_code=$?
               
@@ -152,15 +189,12 @@ jobs:
               echo "$stat_output"
               echo "--- Кінець діагностичного виводу (код виходу: $exit_code) ---"
 
-              # Перевіряємо, чи команда виконалась успішно
               if [ $exit_code -eq 0 ]; then
-                # Витягуємо розмір за допомогою jq
                 remote_bytes=$(echo "$stat_output" | jq '.size')
                 
-                # Перевіряємо, чи вдалося отримати розмір
                 if [ -n "$remote_bytes" ] && [ "$remote_bytes" != "null" ] && [ "$remote_bytes" -gt 0 ]; then
                   echo "📊 Розмір на MinIO отримано: $remote_bytes байт"
-                  break # Успіх, виходимо з циклу спроб
+                  break
                 else
                   echo "ПОПЕРЕДЖЕННЯ: Не вдалося розпарсити розмір з JSON виводу. Спробую ще раз."
                 fi
@@ -179,7 +213,6 @@ jobs:
               exit 1
             fi
             
-            # Порівнюємо розміри (допуск 1%)
             threshold=$(echo "scale=0; $local_size / 100" | bc)
             diff=$(echo "$local_size - $remote_bytes" | bc)
             abs_diff=${diff#-}
