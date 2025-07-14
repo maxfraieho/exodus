@@ -28,7 +28,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y unzip curl
 
-      - name: Install AWS CLI v2 (with update flag)
+      - name: Install AWS CLI v2
         run: |
           curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
           unzip -q awscliv2.zip
@@ -60,16 +60,16 @@ jobs:
           cat > transliterate.sh << 'EOF'
           #!/bin/bash
           transliterate() {
-              local input="$1"
-              input=$(echo "$input" | sed 's/а/a/g; s/б/b/g; s/в/v/g; s/г/h/g; s/ґ/g/g; s/д/d/g; s/е/e/g; s/є/ye/g; s/ж/zh/g; s/з/z/g; s/и/y/g; s/і/i/g; s/ї/yi/g; s/й/y/g; s/к/k/g; s/л/l/g; s/м/m/g; s/н/n/g; s/о/o/g; s/п/p/g; s/р/r/g; s/с/s/g; s/т/t/g; s/у/u/g; s/ф/f/g; s/х/kh/g; s/ц/ts/g; s/ч/ch/g; s/ш/sh/g; s/щ/shch/g; s/ь//g; s/ю/yu/g; s/я/ya/g')
-              input=$(echo "$input" | sed 's/А/A/g; s/Б/B/g; s/В/V/g; s/Г/H/g; s/Ґ/G/g; s/Д/D/g; s/Е/E/g; s/Є/Ye/g; s/Ж/Zh/g; s/З/Z/g; s/И/Y/g; s/І/I/g; s/Ї/Yi/g; s/Й/Y/g; s/К/K/g; s/Л/L/g; s/М/M/g; s/Н/N/g; s/О/O/g; s/П/P/g; s/Р/R/g; s/С/S/g; s/Т/T/g; s/У/U/g; s/Ф/F/g; s/Х/Kh/g; s/Ц/Ts/g; s/Ч/Ch/g; s/Ш/Sh/g; s/Щ/Shch/g; s/Ь//g; s/Ю/Yu/g; s/Я/Ya/g')
-              input=$(echo "$input" | sed 's/[[:space:]]\+/-/g' | tr '[:upper:]' '[:lower:]')
-              input=$(echo "$input" | sed 's/[^a-z0-9-]//g' | sed 's/--*/-/g; s/^-//; s/-$//')
-              if [ ${#input} -lt 3 ]; then input="${input}bucket"; fi
-              if [ ${#input} -gt 63 ]; then input="${input:0:63}"; fi
-              echo "$input"
+              local input="\$1"
+              input=\$(echo "\$input" | sed 's/а/a/g; s/б/b/g; s/в/v/g; s/г/h/g; s/ґ/g/g; s/д/d/g; s/е/e/g; s/є/ye/g; s/ж/zh/g; s/з/z/g; s/и/y/g; s/і/i/g; s/ї/yi/g; s/й/y/g; s/к/k/g; s/л/l/g; s/м/m/g; s/н/n/g; s/о/o/g; s/п/p/g; s/р/r/g; s/с/s/g; s/т/t/g; s/у/u/g; s/ф/f/g; s/х/kh/g; s/ц/ts/g; s/ч/ch/g; s/ш/sh/g; s/щ/shch/g; s/ь//g; s/ю/yu/g; s/я/ya/g')
+              input=\$(echo "\$input" | sed 's/А/A/g; s/Б/B/g; s/В/V/g; s/Г/H/g; s/Ґ/G/g; s/Д/D/g; s/Е/E/g; s/Є/Ye/g; s/Ж/Zh/g; s/З/Z/g; s/И/Y/g; s/І/I/g; s/Ї/Yi/g; s/Й/Y/g; s/К/K/g; s/Л/L/g; s/М/M/g; s/Н/N/g; s/О/O/g; s/П/P/g; s/Р/R/g; s/С/S/g; s/Т/T/g; s/У/U/g; s/Ф/F/g; s/Х/Kh/g; s/Ц/Ts/g; s/Ч/Ch/g; s/Ш/Sh/g; s/Щ/Shch/g; s/Ь//g; s/Ю/Yu/g; s/Я/Ya/g')
+              input=\$(echo "\$input" | sed 's/[[:space:]]\\+/-/g' | tr '[:upper:]' '[:lower:]')
+              input=\$(echo "\$input" | sed 's/[^a-z0-9-]//g' | sed 's/--*/-/g; s/^-//; s/-\$//')
+              if [ \${#input} -lt 3 ]; then input="\${input}bucket"; fi
+              if [ \${#input} -gt 63 ]; then input="\${input:0:63}"; fi
+              echo "\$input"
           }
-          transliterate "$1"
+          transliterate "\$1"
           EOF
           chmod +x transliterate.sh
 
@@ -93,6 +93,7 @@ jobs:
 
               echo "🔄 Генерація XML: $folder_name -> $bucket_name"
               npx repomix --config repomix.config.json --include "$folder/**" --output "xml-outputs/${bucket_name}.xml"
+              sync && sleep 1
 
               if [ ! -s "xml-outputs/${bucket_name}.xml" ]; then
                 echo "❌ XML-файл порожній або не створений"
@@ -107,6 +108,7 @@ jobs:
         run: |
           echo "🔄 Генерація common.xml"
           npx repomix --config repomix.config.json --ignore "src/site/notes/**" --output "xml-outputs/common.xml"
+          sync && sleep 1
 
           if [ ! -s "xml-outputs/common.xml" ]; then
             echo "❌ common.xml порожній або не створений"
@@ -129,21 +131,170 @@ jobs:
           AWS_S3_DISABLE_MULTIPART: "1"
         run: |
           echo "🚀 Завантаження XML у MinIO..."
+          for xml_file in xml-outputs/*.xml; do
+            if [ -f "$xml_file" ]; then
+              bucket_name=$(basename "$xml_file" .xml)
+              aws --endpoint-url "$MINIO_ENDPOINT_URL" s3api create-bucket --bucket "$bucket_name" --region us-east-1 || echo "ℹ️ Бакет '$bucket_name' вже існує"
+              sync && sleep 1
+              aws --endpoint-url "$MINIO_ENDPOINT_URL" s3api put-object \
+                --bucket "$bucket_name" \
+                --key "${bucket_name}.xml" \
+                --body "$xml_file" \
+                --content-type application/xml \
+                --cli-upload-buffer 65536
+              if [ $? -ne 0 ]; then
+                echo "❌ Помилка при завантаженні ${bucket_name}.xml"
+                exit 1
+              fi
+              echo "✅ Завантажено: ${bucket_name}.xml"
+            fi
+          done
 
-          aws --endpoint-url "$MINIO_ENDPOINT_URL" s3api create-bucket --bucket common --region us-east-1 || echo "ℹ️ Бакет 'common' вже існує"
-          aws --endpoint-url "$MINIO_ENDPOINT_URL" s3api put-object --bucket common --key "common.xml" --body "xml-outputs/common.xml" --content-type application/xml
-          if [ $? -ne 0 ]; then
-            echo "❌ Помилка при завантаженні common.xml"
+          echo "🎉 Всі файли успішно завантажено"
+name: Generate Repository XML and Upload to MinIO via Cloudflare
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "src/site/notes/**"
+      - "*.*"
+  pull_request:
+    branches: [main]
+    paths:
+      - "src/site/notes/**"
+      - "*.*"
+
+jobs:
+  generate-and-upload:
+    runs-on: ubuntu-latest
+
+    env:
+      MINIO_ENDPOINT_URL: https://apiminio.exodus.pp.ua
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y unzip curl
+
+      - name: Install AWS CLI v2
+        run: |
+          curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+          unzip -q awscliv2.zip
+          sudo ./aws/install --update
+          aws --version
+
+      - name: Configure AWS CLI for MinIO via Cloudflare
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.MINIO_ACCESS_KEY }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.MINIO_SECRET_KEY }}
+        run: |
+          aws configure set default.region us-east-1
+          aws configure set default.s3.addressing_style path
+
+      - name: Verify AWS CLI credentials with MinIO
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.MINIO_ACCESS_KEY }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.MINIO_SECRET_KEY }}
+        run: |
+          echo "🔐 Перевірка доступу до MinIO..."
+          if ! aws --endpoint-url "$MINIO_ENDPOINT_URL" s3 ls; then
+            echo "❌ Помилка авторизації або недоступний MinIO endpoint"
             exit 1
           fi
-          echo "✅ Завантажено: common.xml"
+          echo "✅ Доступ до MinIO підтверджено"
 
+      - name: Generate transliteration script
+        run: |
+          cat > transliterate.sh << 'EOF'
+          #!/bin/bash
+          transliterate() {
+              local input="\$1"
+              input=\$(echo "\$input" | sed 's/а/a/g; s/б/b/g; s/в/v/g; s/г/h/g; s/ґ/g/g; s/д/d/g; s/е/e/g; s/є/ye/g; s/ж/zh/g; s/з/z/g; s/и/y/g; s/і/i/g; s/ї/yi/g; s/й/y/g; s/к/k/g; s/л/l/g; s/м/m/g; s/н/n/g; s/о/o/g; s/п/p/g; s/р/r/g; s/с/s/g; s/т/t/g; s/у/u/g; s/ф/f/g; s/х/kh/g; s/ц/ts/g; s/ч/ch/g; s/ш/sh/g; s/щ/shch/g; s/ь//g; s/ю/yu/g; s/я/ya/g')
+              input=\$(echo "\$input" | sed 's/А/A/g; s/Б/B/g; s/В/V/g; s/Г/H/g; s/Ґ/G/g; s/Д/D/g; s/Е/E/g; s/Є/Ye/g; s/Ж/Zh/g; s/З/Z/g; s/И/Y/g; s/І/I/g; s/Ї/Yi/g; s/Й/Y/g; s/К/K/g; s/Л/L/g; s/М/M/g; s/Н/N/g; s/О/O/g; s/П/P/g; s/Р/R/g; s/С/S/g; s/Т/T/g; s/У/U/g; s/Ф/F/g; s/Х/Kh/g; s/Ц/Ts/g; s/Ч/Ch/g; s/Ш/Sh/g; s/Щ/Shch/g; s/Ь//g; s/Ю/Yu/g; s/Я/Ya/g')
+              input=\$(echo "\$input" | sed 's/[[:space:]]\\+/-/g' | tr '[:upper:]' '[:lower:]')
+              input=\$(echo "\$input" | sed 's/[^a-z0-9-]//g' | sed 's/--*/-/g; s/^-//; s/-\$//')
+              if [ \${#input} -lt 3 ]; then input="\${input}bucket"; fi
+              if [ \${#input} -gt 63 ]; then input="\${input:0:63}"; fi
+              echo "\$input"
+          }
+          transliterate "\$1"
+          EOF
+          chmod +x transliterate.sh
+
+      - name: Generate XML files for each folder
+        run: |
+          mkdir -p xml-outputs
+          if [ ! -d "src/site/notes/" ]; then
+            echo "❌ src/site/notes/ не знайдено"
+            exit 1
+          fi
+
+          for folder in src/site/notes/*/; do
+            if [ -d "$folder" ]; then
+              folder_name=$(basename "$folder")
+              bucket_name=$(./transliterate.sh "$folder_name")
+
+              if [[ ! "$bucket_name" =~ ^[a-z0-9][a-z0-9-]{1,61}[a-z0-9]$ ]] && [[ ${#bucket_name} -ne 3 ]]; then
+                echo "❌ Некоректна назва бакету: $bucket_name"
+                exit 1
+              fi
+
+              echo "🔄 Генерація XML: $folder_name -> $bucket_name"
+              npx repomix --config repomix.config.json --include "$folder/**" --output "xml-outputs/${bucket_name}.xml"
+              sync && sleep 1
+
+              if [ ! -s "xml-outputs/${bucket_name}.xml" ]; then
+                echo "❌ XML-файл порожній або не створений"
+                exit 1
+              fi
+
+              echo "✅ Згенеровано: ${bucket_name}.xml"
+            fi
+          done
+
+      - name: Generate common.xml for root files
+        run: |
+          echo "🔄 Генерація common.xml"
+          npx repomix --config repomix.config.json --ignore "src/site/notes/**" --output "xml-outputs/common.xml"
+          sync && sleep 1
+
+          if [ ! -s "xml-outputs/common.xml" ]; then
+            echo "❌ common.xml порожній або не створений"
+            exit 1
+          fi
+
+          echo "✅ Згенеровано: common.xml"
+
+      - name: Upload XML outputs as artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: xml-outputs
+          path: xml-outputs/
+          retention-days: 7
+
+      - name: Upload XML files to MinIO
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.MINIO_ACCESS_KEY }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.MINIO_SECRET_KEY }}
+          AWS_S3_DISABLE_MULTIPART: "1"
+        run: |
+          echo "🚀 Завантаження XML у MinIO..."
           for xml_file in xml-outputs/*.xml; do
-            if [ -f "$xml_file" ] && [ "$(basename "$xml_file")" != "common.xml" ]; then
+            if [ -f "$xml_file" ]; then
               bucket_name=$(basename "$xml_file" .xml)
-
               aws --endpoint-url "$MINIO_ENDPOINT_URL" s3api create-bucket --bucket "$bucket_name" --region us-east-1 || echo "ℹ️ Бакет '$bucket_name' вже існує"
-              aws --endpoint-url "$MINIO_ENDPOINT_URL" s3api put-object --bucket "$bucket_name" --key "${bucket_name}.xml" --body "$xml_file" --content-type application/xml
+              sync && sleep 1
+              aws --endpoint-url "$MINIO_ENDPOINT_URL" s3api put-object \
+                --bucket "$bucket_name" \
+                --key "${bucket_name}.xml" \
+                --body "$xml_file" \
+                --content-type application/xml \
+                --cli-upload-buffer 65536
               if [ $? -ne 0 ]; then
                 echo "❌ Помилка при завантаженні ${bucket_name}.xml"
                 exit 1
