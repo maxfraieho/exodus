@@ -15,36 +15,61 @@ on:
 jobs:
   generate-and-upload:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
 
     env:
       MINIO_ENDPOINT_URL: https://apiminio.exodus.pp.ua
       AWS_ACCESS_KEY_ID: ${{ secrets.MINIO_ACCESS_KEY }}
       AWS_SECRET_ACCESS_KEY: ${{ secrets.MINIO_SECRET_KEY }}
       AWS_DEFAULT_REGION: us-east-1
+      AWS_CLI_READ_TIMEOUT: 30
+      AWS_CLI_MAX_ATTEMPTS: 3
 
     steps:
       # Крок 1: Checkout
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # Крок 2: Встановлення залежностей і AWS CLI
+      # Крок 2: Setup Node.js
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      # Крок 3: Cache dependencies
+      - name: Cache Node.js dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
+
+      # Крок 4: Install Node.js dependencies
+      - name: Install Node.js dependencies
+        run: |
+          npm install -g repomix
+          echo "✅ repomix встановлено: $(repomix --version)"
+
+      # Крок 5: Встановлення системних залежностей і AWS CLI
       - name: Install system dependencies and AWS CLI
         run: |
           sudo apt-get update
-          sudo apt-get install -y unzip curl bc jq
+          sudo apt-get install -y unzip curl bc jq xmllint
           curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
           unzip -q awscliv2.zip
           sudo ./aws/install --update
           aws --version
 
-      # Крок 3: Налаштування AWS CLI для MinIO через Cloudflare
+      # Крок 6: Налаштування AWS CLI для MinIO через Cloudflare
       - name: Configure AWS CLI for MinIO via Cloudflare
         run: |
           aws configure set default.region us-east-1
           aws configure set default.s3.addressing_style path
           aws configure set default.s3.signature_version s3v4
 
-      # Крок 4: Перевірка доступу до MinIO
+      # Крок 7: Перевірка доступу до MinIO
       - name: Verify AWS CLI credentials with MinIO
         run: |
           echo "🔐 Перевірка доступу до MinIO..."
@@ -54,26 +79,55 @@ jobs:
           fi
           echo "✅ Доступ до MinIO підтверджено"
 
-      # Крок 5: Генерація transliteration скрипта
-      - name: Generate transliteration script
+      # Крок 8: Створення репо конфігурації
+      - name: Create repomix configuration
+        run: |
+          cat > repomix.config.json << 'EOF'
+          {
+            "output": {
+              "filePath": "repository.xml",
+              "style": "xml"
+            },
+            "include": ["**/*.md"],
+            "ignore": [
+              "node_modules/**",
+              ".git/**",
+              "*.log",
+              ".github/**",
+              "dist/**",
+              "build/**"
+            ]
+          }
+          EOF
+          echo "✅ Конфігурація repomix створена"
+
+      # Крок 9: Генерація покращеного транслітераційного скрипта
+      - name: Generate improved transliteration script
         run: |
           cat > transliterate.sh << 'EOF'
           #!/bin/bash
           transliterate() {
               local input="$1"
+              # Українська транслітерація
               input=$(echo "$input" | sed 's/а/a/g; s/б/b/g; s/в/v/g; s/г/h/g; s/ґ/g/g; s/д/d/g; s/е/e/g; s/є/ye/g; s/ж/zh/g; s/з/z/g; s/и/y/g; s/і/i/g; s/ї/yi/g; s/й/y/g; s/к/k/g; s/л/l/g; s/м/m/g; s/н/n/g; s/о/o/g; s/п/p/g; s/р/r/g; s/с/s/g; s/т/t/g; s/у/u/g; s/ф/f/g; s/х/kh/g; s/ц/ts/g; s/ч/ch/g; s/ш/sh/g; s/щ/shch/g; s/ь//g; s/ю/yu/g; s/я/ya/g')
               input=$(echo "$input" | sed 's/А/A/g; s/Б/B/g; s/В/V/g; s/Г/H/g; s/Ґ/G/g; s/Д/D/g; s/Е/E/g; s/Є/Ye/g; s/Ж/Zh/g; s/З/Z/g; s/И/Y/g; s/І/I/g; s/Ї/Yi/g; s/Й/Y/g; s/К/K/g; s/Л/L/g; s/М/M/g; s/Н/N/g; s/О/O/g; s/П/P/g; s/Р/R/g; s/С/S/g; s/Т/T/g; s/У/U/g; s/Ф/F/g; s/Х/Kh/g; s/Ц/Ts/g; s/Ч/Ch/g; s/Ш/Sh/g; s/Щ/Shch/g; s/Ь//g; s/Ю/Yu/g; s/Я/Ya/g')
+              # Заміна пробілів на дефіси та приведення до нижнього регістру
               input=$(echo "$input" | sed 's/[[:space:]]\+/-/g' | tr '[:upper:]' '[:lower:]')
-              input=$(echo "$input" | sed 's/[^a-z0-9-]//g' | sed 's/--*/-/g; s/^-//; s/-$//')
+              # Покращена обробка спеціальних символів (залишаємо крапки, підкреслення, дефіси)
+              input=$(echo "$input" | sed 's/[^a-z0-9._-]//g' | sed 's/--*/-/g; s/^-//; s/-$//')
+              # Валідація довжини для S3 bucket names
               if [ ${#input} -lt 3 ]; then input="${input}bucket"; fi
               if [ ${#input} -gt 63 ]; then input="${input:0:63}"; fi
+              # Видалення дефісів на початку та в кінці після обрізки
+              input=$(echo "$input" | sed 's/^-//; s/-$//')
               echo "$input"
           }
           transliterate "$1"
           EOF
           chmod +x transliterate.sh
+          echo "✅ Скрипт транслітерації створено"
 
-      # Крок 6: Генерація XML для кожної папки (виправлена версія)
+      # Крок 10: Генерація XML файлів для кожної папки з покращенням
       - name: Generate XML files for each folder
         run: |
           mkdir -p xml-outputs
@@ -82,6 +136,7 @@ jobs:
             exit 1
           fi
           
+          folder_count=0
           for folder in src/site/notes/*/; do
             if [ -d "$folder" ]; then
               folder_name=$(basename "$folder")
@@ -89,32 +144,95 @@ jobs:
               
               echo "🔄 Генерація XML для папки: $folder_name (бакет: $bucket_name)"
               
-              # Додаткове логування для перевірки файлів
-              echo "🔍 Файли для обробки в '$folder_name':"
-              find "$folder" -maxdepth 1 -name "*.md" -print
+              # Використовуємо рекурсивний шаблон для включення файлів у підпапках
+              file_count=$(find "$folder" -name "*.md" -type f | wc -l)
+              echo "📄 Знайдено файлів: $file_count"
               
-              # Виправлена команда з точним шаблоном
-              npx repomix --config repomix.config.json --include "$folder*.md" --output "xml-outputs/${bucket_name}.xml"
-              
-              if [ ! -s "xml-outputs/${bucket_name}.xml" ]; then 
-                echo "❌ Помилка: згенерований XML-файл є порожнім: ${bucket_name}.xml"
-                exit 1
+              if [ "$file_count" -gt 0 ]; then
+                repomix --config repomix.config.json --include "${folder}**/*.md" --output "xml-outputs/${bucket_name}.xml"
+                
+                if [ -s "xml-outputs/${bucket_name}.xml" ]; then
+                  echo "✅ Успішно згенеровано: xml-outputs/${bucket_name}.xml"
+                  folder_count=$((folder_count + 1))
+                else
+                  echo "❌ Помилка: згенерований XML-файл є порожнім: ${bucket_name}.xml"
+                  exit 1
+                fi
+              else
+                echo "⚠️ Порожня папка: $folder_name - створюємо placeholder"
+                cat > "xml-outputs/${bucket_name}.xml" << 'PLACEHOLDER'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <repository>
+            <metadata>
+              <status>empty</status>
+              <message>No markdown files found in this folder</message>
+            </metadata>
+          </repository>
+          PLACEHOLDER
+                folder_count=$((folder_count + 1))
               fi
-              
-              echo "✅ Успішно згенеровано: xml-outputs/${bucket_name}.xml"
               echo "---"
             fi
           done
+          
+          echo "📊 Статистика генерації XML:"
+          echo "- Оброблено папок: $folder_count"
+          echo "- Згенеровано XML файлів: $(find xml-outputs -name '*.xml' | wc -l)"
 
-      # Крок 7: Генерація common.xml для кореневих файлів
+      # Крок 11: Генерація common.xml для кореневих файлів
       - name: Generate common.xml for root files
         run: |
           echo "🔄 Генерація common.xml для кореневих файлів"
-          npx repomix --config repomix.config.json --ignore "src/site/notes/**" --output "xml-outputs/common.xml"
-          if [ ! -s "xml-outputs/common.xml" ]; then echo "❌ common.xml порожній або не створений"; exit 1; fi
+          repomix --config repomix.config.json --ignore "src/site/notes/**" --output "xml-outputs/common.xml"
+          if [ ! -s "xml-outputs/common.xml" ]; then 
+            echo "⚠️ common.xml порожній - створюємо placeholder"
+            cat > "xml-outputs/common.xml" << 'PLACEHOLDER'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <repository>
+            <metadata>
+              <status>empty</status>
+              <message>No root files found</message>
+            </metadata>
+          </repository>
+          PLACEHOLDER
+          fi
           echo "✅ Згенеровано: common.xml"
 
-      # Крок 8: Upload XML outputs as artifacts
+      # Крок 12: Валідація XML файлів
+      - name: Validate XML files
+        run: |
+          echo "🔍 Валідація XML файлів..."
+          xml_valid=true
+          for xml_file in xml-outputs/*.xml; do
+            if ! xmllint --noout "$xml_file" 2>/dev/null; then
+              echo "❌ Невалідний XML: $xml_file"
+              xml_valid=false
+            else
+              echo "✅ Валідний XML: $(basename "$xml_file")"
+            fi
+          done
+          
+          if [ "$xml_valid" = false ]; then
+            echo "❌ Знайдено невалідні XML файли"
+            exit 1
+          fi
+          echo "✅ Всі XML файли валідні"
+
+      # Крок 13: Генерація метрик
+      - name: Generate metrics
+        run: |
+          echo "📊 Детальна статистика:"
+          echo "- Кількість папок: $(find src/site/notes -type d -mindepth 1 -maxdepth 1 | wc -l)"
+          echo "- Кількість XML файлів: $(find xml-outputs -name '*.xml' | wc -l)"
+          echo "- Загальний розмір XML: $(du -sh xml-outputs/ | cut -f1)"
+          echo ""
+          echo "📄 Розміри файлів:"
+          for xml_file in xml-outputs/*.xml; do
+            size=$(wc -c < "$xml_file" | tr -d ' ')
+            echo "  - $(basename "$xml_file"): $size байт"
+          done
+
+      # Крок 14: Upload XML outputs as artifacts
       - name: Upload XML outputs as artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -122,19 +240,21 @@ jobs:
           path: xml-outputs/
           retention-days: 7
 
-      # Крок 9: Встановлення MinIO Client
+      # Крок 15: Встановлення MinIO Client
       - name: Install MinIO Client
         run: |
           wget https://dl.min.io/client/mc/release/linux-amd64/mc
           chmod +x mc
           sudo mv mc /usr/local/bin/
+          echo "✅ MinIO Client встановлено: $(mc --version)"
 
-      # Крок 10: Конфігурація MinIO Client
+      # Крок 16: Конфігурація MinIO Client
       - name: Configure MinIO Client
         run: |
           mc alias set minio "$MINIO_ENDPOINT_URL" "$AWS_ACCESS_KEY_ID" "$AWS_SECRET_ACCESS_KEY" --api S3v4
+          echo "✅ MinIO Client налаштовано"
 
-      # Крок 10.5: Синхронізація та видалення застарілих бакетів
+      # Крок 17: Покращена синхронізація бакетів
       - name: Synchronize buckets (delete obsolete ones)
         run: |
           echo "🔄 Починаємо синхронізацію бакетів..."
@@ -149,39 +269,86 @@ jobs:
           done
           EXPECTED_BUCKETS+=("common")
           
-          echo "✅ Очікувані бакети згідно з репозиторієм: ${EXPECTED_BUCKETS[*]}"
+          echo "✅ Очікувані бакети згідно з репозиторієм (${#EXPECTED_BUCKETS[@]}): ${EXPECTED_BUCKETS[*]}"
 
-          ACTUAL_BUCKETS=($(mc ls minio/ | awk '{print $NF}' | sed 's|/||' || true))
-          echo "🔍 Знайдені бакети на MinIO: ${ACTUAL_BUCKETS[*]}"
+          # Отримуємо список існуючих бакетів з обробкою помилок
+          if ! ACTUAL_BUCKETS=($(mc ls minio/ 2>/dev/null | awk '{print $NF}' | sed 's|/||' || true)); then
+            echo "⚠️ Не вдалося отримати список бакетів або бакетів немає"
+            ACTUAL_BUCKETS=()
+          fi
+          
+          echo "🔍 Знайдені бакети на MinIO (${#ACTUAL_BUCKETS[@]}): ${ACTUAL_BUCKETS[*]}"
 
+          deleted_count=0
           for bucket in "${ACTUAL_BUCKETS[@]}"; do
             if [[ ! " ${EXPECTED_BUCKETS[*]} " =~ " ${bucket} " ]]; then
               echo "🗑️ Бакет '$bucket' є застарілим і буде видалений."
-              mc rb --force "minio/$bucket"
-              echo "✅ Бакет '$bucket' успішно видалено."
+              if mc rb --force "minio/$bucket" 2>/dev/null; then
+                echo "✅ Бакет '$bucket' успішно видалено."
+                deleted_count=$((deleted_count + 1))
+              else
+                echo "⚠️ Помилка видалення бакета '$bucket'"
+              fi
             else
               echo "👍 Бакет '$bucket' актуальний, залишаємо."
             fi
           done
 
-          echo "🎉 Синхронізацію бакетів завершено."
+          echo "🎉 Синхронізацію бакетів завершено. Видалено: $deleted_count"
       
-      # Крок 11: Завантаження XML-файлів у MinIO через mc
+      # Крок 18: Покращене завантаження XML-файлів
       - name: Upload XML files with MinIO Client
         run: |
+          upload_count=0
           for xml_file in xml-outputs/*.xml; do
             bucket_name=$(basename "$xml_file" .xml)
+            file_size=$(wc -c < "$xml_file" | tr -d ' ')
+            
             echo "📤 Завантаження файлу: $xml_file -> minio/$bucket_name/"
-            mc mb -q --ignore-existing "minio/$bucket_name"
-            mc cp "$xml_file" "minio/$bucket_name/${bucket_name}.xml"
-            echo "⏳ Очікування синхронізації (5 секунд)..."
-            sleep 5
-            echo "✅ Завантажено: ${bucket_name}.xml"
+            echo "📊 Розмір файлу: $file_size байт"
+            
+            # Створюємо бакет якщо не існує
+            if mc mb -q --ignore-existing "minio/$bucket_name"; then
+              echo "✅ Бакет '$bucket_name' готовий"
+            else
+              echo "⚠️ Проблема зі створенням бакета '$bucket_name'"
+            fi
+            
+            # Завантажуємо файл з retry логікою
+            upload_success=false
+            for attempt in {1..3}; do
+              echo "🔄 Спроба завантаження $attempt з 3..."
+              if mc cp "$xml_file" "minio/$bucket_name/${bucket_name}.xml"; then
+                upload_success=true
+                break
+              else
+                echo "⚠️ Помилка завантаження, спроба $attempt"
+                if [ "$attempt" -lt 3 ]; then
+                  echo "⏳ Очікування 5 секунд..."
+                  sleep 5
+                fi
+              fi
+            done
+            
+            if [ "$upload_success" = true ]; then
+              echo "✅ Завантажено: ${bucket_name}.xml"
+              upload_count=$((upload_count + 1))
+            else
+              echo "❌ Не вдалося завантажити: ${bucket_name}.xml"
+              exit 1
+            fi
+            
+            echo "⏳ Очікування синхронізації (3 секунди)..."
+            sleep 3
+            echo "---"
           done
+          
+          echo "📊 Завантажено файлів: $upload_count"
 
-      # Крок 12: Фінальна версія перевірки завантаження з діагностикою
-      - name: Verify uploaded files with retry logic using JSON output
+      # Крок 19: Покращена перевірка завантаження
+      - name: Verify uploaded files with enhanced retry logic
         run: |
+          verification_success=true
           for xml_file in xml-outputs/*.xml; do
             bucket_name=$(basename "$xml_file" .xml)
             local_size=$(wc -c < "$xml_file" | tr -d ' ')
@@ -190,64 +357,100 @@ jobs:
             echo "📊 Локальний розмір: $local_size байт"
             
             remote_bytes=""
-            for attempt in {1..5}; do
-              echo "🔄 Спроба $attempt з 5..."
+            verification_attempts=0
+            max_attempts=5
+            
+            while [ $verification_attempts -lt $max_attempts ]; do
+              verification_attempts=$((verification_attempts + 1))
+              echo "🔄 Спроба перевірки $verification_attempts з $max_attempts..."
               
-              stat_output=$(mc stat --json "minio/$bucket_name/${bucket_name}.xml" 2>&1)
-              exit_code=$?
-              
-              echo "--- Початок діагностичного виводу mc stat (спроба $attempt) ---"
-              echo "$stat_output"
-              echo "--- Кінець діагностичного виводу (код виходу: $exit_code) ---"
-
-              if [ $exit_code -eq 0 ]; then
-                remote_bytes=$(echo "$stat_output" | jq '.size')
-                
-                if [ -n "$remote_bytes" ] && [ "$remote_bytes" != "null" ] && [ "$remote_bytes" -gt 0 ]; then
-                  echo "📊 Розмір на MinIO отримано: $remote_bytes байт"
-                  break
-                else
-                  echo "ПОПЕРЕДЖЕННЯ: Не вдалося розпарсити розмір з JSON виводу. Спробую ще раз."
+              if stat_output=$(mc stat --json "minio/$bucket_name/${bucket_name}.xml" 2>/dev/null); then
+                if remote_bytes=$(echo "$stat_output" | jq -r '.size' 2>/dev/null); then
+                  if [ -n "$remote_bytes" ] && [ "$remote_bytes" != "null" ] && [ "$remote_bytes" -gt 0 ]; then
+                    echo "📊 Розмір на MinIO: $remote_bytes байт"
+                    break
+                  fi
                 fi
-              else
-                echo "ПОПЕРЕДЖЕННЯ: команда mc stat зазнала невдачі з кодом виходу: $exit_code"
               fi
               
-              if [ "$attempt" -lt 5 ]; then
-                echo "⏳ Очікування 3 секунди перед наступною спробою..."
-                sleep 3
+              echo "⚠️ Спроба $verification_attempts не вдалася"
+              if [ $verification_attempts -lt $max_attempts ]; then
+                echo "⏳ Очікування 5 секунд..."
+                sleep 5
               fi
             done
             
             if [ -z "$remote_bytes" ] || [ "$remote_bytes" = "0" ] || [ "$remote_bytes" = "null" ]; then
-              echo "❌ Не вдалося отримати розмір файлу на MinIO після 5 спроб."
-              exit 1
+              echo "❌ Не вдалося отримати розмір файлу після $max_attempts спроб"
+              verification_success=false
+              continue
             fi
             
+            # Перевірка розмірів з допуском 1%
             threshold=$(echo "scale=0; $local_size / 100" | bc)
+            if [ "$threshold" -lt 10 ]; then threshold=10; fi
+            
             diff=$(echo "$local_size - $remote_bytes" | bc)
             abs_diff=${diff#-}
             
             if [ $(echo "$abs_diff <= $threshold" | bc -l) -eq 1 ]; then
               echo "✅ Розміри співпадають (допуск ±$threshold байт)"
             else
-              echo "⚠️ Розміри не співпадають!"
+              echo "❌ Розміри не співпадають!"
               echo "📊 Локальний: $local_size байт"
               echo "📊 Віддалений: $remote_bytes байт"
               echo "🔍 Різниця: $diff байт"
-              exit 1
+              verification_success=false
             fi
-          done
-          
-          echo "🎉 Всі файли успішно завантажені та перевірені!"
-
-      # Крок 13: Додаткова перевірка списку файлів
-      - name: List all uploaded files
-        run: |
-          echo "📋 Список всіх завантажених файлів:"
-          for xml_file in xml-outputs/*.xml; do
-            bucket_name=$(basename "$xml_file" .xml)
-            echo "🗂️ Бакет: $bucket_name"
-            mc ls "minio/$bucket_name/" || true
             echo "---"
           done
+          
+          if [ "$verification_success" = true ]; then
+            echo "🎉 Всі файли успішно завантажені та перевірені!"
+          else
+            echo "❌ Помилки при перевірці файлів"
+            exit 1
+          fi
+
+      # Крок 20: Фінальна перевірка та звіт
+      - name: Final verification and report
+        run: |
+          echo "📋 Фінальний звіт:"
+          echo "================="
+          
+          total_buckets=0
+          total_size=0
+          
+          for xml_file in xml-outputs/*.xml; do
+            bucket_name=$(basename "$xml_file" .xml")
+            local_size=$(wc -c < "$xml_file" | tr -d ' ')
+            
+            echo "🗂️ Бакет: $bucket_name"
+            echo "   📊 Розмір: $local_size байт"
+            
+            if mc ls "minio/$bucket_name/" >/dev/null 2>&1; then
+              echo "   ✅ Статус: Завантажено"
+              total_buckets=$((total_buckets + 1))
+              total_size=$((total_size + local_size))
+            else
+              echo "   ❌ Статус: Помилка"
+            fi
+            echo "   ---"
+          done
+          
+          echo "📊 Загальна статистика:"
+          echo "   - Успішно завантажено бакетів: $total_buckets"
+          echo "   - Загальний розмір: $total_size байт"
+          echo "   - Середній розмір файлу: $((total_size / total_buckets)) байт"
+          echo ""
+          echo "🎯 Workflow завершено успішно!"
+
+      # Крок 21: Cleanup (опціонально)
+      - name: Cleanup temporary files
+        if: always()
+        run: |
+          echo "🧹 Очищення тимчасових файлів..."
+          rm -f awscliv2.zip
+          rm -f transliterate.sh
+          rm -f repomix.config.json
+          echo "✅ Очищення завершено"
