@@ -73,19 +73,36 @@ jobs:
           EOF
           chmod +x transliterate.sh
 
-      # Крок 6: Генерація XML для кожної папки
+      # Крок 6: Генерація XML для кожної папки (виправлена версія)
       - name: Generate XML files for each folder
         run: |
           mkdir -p xml-outputs
-          if [ ! -d "src/site/notes/" ]; then echo "❌ src/site/notes/ не знайдено"; exit 1; fi
+          if [ ! -d "src/site/notes/" ]; then 
+            echo "❌ Папка src/site/notes/ не знайдена"
+            exit 1
+          fi
+          
           for folder in src/site/notes/*/; do
             if [ -d "$folder" ]; then
               folder_name=$(basename "$folder")
               bucket_name=$(./transliterate.sh "$folder_name")
-              echo "🔄 Генерація XML: $folder_name -> $bucket_name"
-              npx repomix --config repomix.config.json --include "$folder/**" --output "xml-outputs/${bucket_name}.xml"
-              if [ ! -s "xml-outputs/${bucket_name}.xml" ]; then echo "❌ XML-файл порожній: ${bucket_name}.xml"; exit 1; fi
-              echo "✅ Згенеровано: ${bucket_name}.xml"
+              
+              echo "🔄 Генерація XML для папки: $folder_name (бакет: $bucket_name)"
+              
+              # Додаткове логування для перевірки файлів
+              echo "🔍 Файли для обробки в '$folder_name':"
+              find "$folder" -maxdepth 1 -name "*.md" -print
+              
+              # Виправлена команда з точним шаблоном
+              npx repomix --config repomix.config.json --include "$folder*.md" --output "xml-outputs/${bucket_name}.xml"
+              
+              if [ ! -s "xml-outputs/${bucket_name}.xml" ]; then 
+                echo "❌ Помилка: згенерований XML-файл є порожнім: ${bucket_name}.xml"
+                exit 1
+              fi
+              
+              echo "✅ Успішно згенеровано: xml-outputs/${bucket_name}.xml"
+              echo "---"
             fi
           done
 
@@ -122,7 +139,6 @@ jobs:
         run: |
           echo "🔄 Починаємо синхронізацію бакетів..."
           
-          # 1. Створюємо список ОЧІКУВАНИХ бакетів на основі папок у репозиторії
           declare -a EXPECTED_BUCKETS
           for folder in src/site/notes/*/; do
             if [ -d "$folder" ]; then
@@ -131,21 +147,16 @@ jobs:
               EXPECTED_BUCKETS+=("$bucket_name")
             fi
           done
-          EXPECTED_BUCKETS+=("common") # Завжди додаємо бакет "common"
+          EXPECTED_BUCKETS+=("common")
           
           echo "✅ Очікувані бакети згідно з репозиторієм: ${EXPECTED_BUCKETS[*]}"
 
-          # 2. Отримуємо список РЕАЛЬНИХ бакетів з MinIO
-          # awk '{print $NF}' бере останню колонку, sed 's|/||' видаляє слеш в кінці
           ACTUAL_BUCKETS=($(mc ls minio/ | awk '{print $NF}' | sed 's|/||' || true))
           echo "🔍 Знайдені бакети на MinIO: ${ACTUAL_BUCKETS[*]}"
 
-          # 3. Порівнюємо списки та видаляємо зайві бакети
           for bucket in "${ACTUAL_BUCKETS[@]}"; do
-            # Перевіряємо, чи існує реальний бакет у списку очікуваних
             if [[ ! " ${EXPECTED_BUCKETS[*]} " =~ " ${bucket} " ]]; then
               echo "🗑️ Бакет '$bucket' є застарілим і буде видалений."
-              # Видаляємо бакет разом з усім його вмістом
               mc rb --force "minio/$bucket"
               echo "✅ Бакет '$bucket' успішно видалено."
             else
