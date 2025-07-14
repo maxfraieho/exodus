@@ -158,8 +158,7 @@ jobs:
               --bucket "$bucket_name" \
               --key "${bucket_name}.xml" \
               --body "$file_path" \
-              --content-type application/xml \
-              --cli-upload-buffer 65536; then
+              --content-type application/xml; then
               echo "✅ Завантажено: ${bucket_name}.xml"
               exit 0
             else
