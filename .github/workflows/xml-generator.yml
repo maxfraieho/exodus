@@ -79,7 +79,7 @@ jobs:
           fi
           echo "✅ Доступ до MinIO підтверджено"
 
-      # Крок 8: Створення репо конфігурації
+      # Крок 8: Створення репо конфігурації (FIXED)
       - name: Create repomix configuration
         run: |
           cat > repomix.config.json << 'EOF'
@@ -89,14 +89,16 @@ jobs:
               "style": "xml"
             },
             "include": ["**/*.md"],
-            "ignore": [
-              "node_modules/**",
-              ".git/**",
-              "*.log",
-              ".github/**",
-              "dist/**",
-              "build/**"
-            ]
+            "ignore": {
+              "paths": [
+                "node_modules/**",
+                ".git/**",
+                "*.log",
+                ".github/**",
+                "dist/**",
+                "build/**"
+              ]
+            }
           }
           EOF
           echo "✅ Конфігурація repomix створена"
@@ -149,7 +151,29 @@ jobs:
               echo "📄 Знайдено файлів: $file_count"
               
               if [ "$file_count" -gt 0 ]; then
-                repomix --config repomix.config.json --include "${folder}**/*.md" --output "xml-outputs/${bucket_name}.xml"
+                # Create temporary config for this folder
+                cat > "temp_config_${bucket_name}.json" << EOF
+          {
+            "output": {
+              "filePath": "xml-outputs/${bucket_name}.xml",
+              "style": "xml"
+            },
+            "include": ["${folder}**/*.md"],
+            "ignore": {
+              "paths": [
+                "node_modules/**",
+                ".git/**",
+                "*.log",
+                ".github/**",
+                "dist/**",
+                "build/**"
+              ]
+            }
+          }
+          EOF
+                
+                repomix --config "temp_config_${bucket_name}.json"
+                rm "temp_config_${bucket_name}.json"
                 
                 if [ -s "xml-outputs/${bucket_name}.xml" ]; then
                   echo "✅ Успішно згенеровано: xml-outputs/${bucket_name}.xml"
@@ -183,7 +207,32 @@ jobs:
       - name: Generate common.xml for root files
         run: |
           echo "🔄 Генерація common.xml для кореневих файлів"
-          repomix --config repomix.config.json --ignore "src/site/notes/**" --output "xml-outputs/common.xml"
+          
+          # Create temporary config for common files
+          cat > "temp_config_common.json" << 'EOF'
+          {
+            "output": {
+              "filePath": "xml-outputs/common.xml",
+              "style": "xml"
+            },
+            "include": ["**/*.md"],
+            "ignore": {
+              "paths": [
+                "src/site/notes/**",
+                "node_modules/**",
+                ".git/**",
+                "*.log",
+                ".github/**",
+                "dist/**",
+                "build/**"
+              ]
+            }
+          }
+          EOF
+          
+          repomix --config "temp_config_common.json"
+          rm "temp_config_common.json"
+          
           if [ ! -s "xml-outputs/common.xml" ]; then 
             echo "⚠️ common.xml порожній - створюємо placeholder"
             cat > "xml-outputs/common.xml" << 'PLACEHOLDER'
@@ -422,7 +471,7 @@ jobs:
           total_size=0
           
           for xml_file in xml-outputs/*.xml; do
-            bucket_name=$(basename "$xml_file" .xml")
+            bucket_name=$(basename "$xml_file" .xml)
             local_size=$(wc -c < "$xml_file" | tr -d ' ')
             
             echo "🗂️ Бакет: $bucket_name"
@@ -452,5 +501,5 @@ jobs:
           echo "🧹 Очищення тимчасових файлів..."
           rm -f awscliv2.zip
           rm -f transliterate.sh
-          rm -f repomix.config.json
+          rm -f temp_config_*.json
           echo "✅ Очищення завершено"
