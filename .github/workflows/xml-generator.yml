@@ -130,82 +130,106 @@ jobs:
             echo "✅ Завантажено: ${bucket_name}.xml"
           done
 
-      # Крок 12: Фінальна версія перевірки завантаження
-      - name: Verify uploaded files with retry logic
-        run: |
-          # Функція для конвертації human-readable size в байти
-          to_bytes() {
-            local size=$1
-            local unit=$2
-            case $unit in
-              KiB) LC_NUMERIC=C echo "$size * 1024" | bc | awk '{printf "%.0f", $1}';;
-              MiB) LC_NUMERIC=C echo "$size * 1024 * 1024" | bc | awk '{printf "%.0f", $1}';;
-              GiB) LC_NUMERIC=C echo "$size * 1024 * 1024 * 1024" | bc | awk '{printf "%.0f", $1}';;
-              kB)  LC_NUMERIC=C echo "$size * 1000" | bc | awk '{printf "%.0f", $1}';;
-              MB)  LC_NUMERIC=C echo "$size * 1000 * 1000" | bc | awk '{printf "%.0f", $1}';;
-              GB)  LC_NUMERIC=C echo "$size * 1000 * 1000 * 1000" | bc | awk '{printf "%.0f", $1}';;
-              *)   echo "$size" | awk '{printf "%.0f", $1}' ;;
-            esac
-          }
+ # Крок 12: Фінальна версія перевірки завантаження (з детальним логуванням)
+- name: Verify uploaded files with retry logic
+  run: |
+    set -x  # Додаємо детальне логування виконання
+    
+    # Функція для конвертації human-readable size в байти
+    to_bytes() {
+      local size=$1
+      local unit=$2
+      echo "Конвертація: $size $unit" >&2
+      case $unit in
+        KiB) LC_NUMERIC=C echo "$size * 1024" | bc | awk '{printf "%.0f", $1}';;
+        MiB) LC_NUMERIC=C echo "$size * 1024 * 1024" | bc | awk '{printf "%.0f", $1}';;
+        GiB) LC_NUMERIC=C echo "$size * 1024 * 1024 * 1024" | bc | awk '{printf "%.0f", $1}';;
+        kB)  LC_NUMERIC=C echo "$size * 1000" | bc | awk '{printf "%.0f", $1}';;
+        MB)  LC_NUMERIC=C echo "$size * 1000 * 1000" | bc | awk '{printf "%.0f", $1}';;
+        GB)  LC_NUMERIC=C echo "$size * 1000 * 1000 * 1000" | bc | awk '{printf "%.0f", $1}';;
+        *)   echo "$size" | awk '{printf "%.0f", $1}' ;;
+      esac
+    }
 
-          for xml_file in xml-outputs/*.xml; do
-            bucket_name=$(basename "$xml_file" .xml)
-            local_size=$(wc -c < "$xml_file" | tr -d ' ')
-            
-            echo "🔍 Перевірка файлу: ${bucket_name}.xml"
-            echo "📊 Локальний розмір: $local_size байт"
-            
-            remote_bytes=""
-            for attempt in {1..5}; do
-              echo "🔄 Спроба $attempt з 5..."
-              
-              if stat_output=$(mc stat "minio/$bucket_name/${bucket_name}.xml" 2>&1); then
-                # ВИПРАВЛЕНО: Шукаємо "Size :" і додаємо "|| true", щоб скрипт не падав
-                size_line=$(echo "$stat_output" | grep 'Size :' || true)
-                
-                if [ -z "$size_line" ]; then
-                  echo "ПОПЕРЕДЖЕННЯ: Не вдалося знайти рядок 'Size :' у виводі mc stat. Спробую ще раз."
-                else
-                  size_value=$(echo "$size_line" | awk '{print $3}')
-                  size_unit=$(echo "$size_line" | awk '{print $4}')
-                  remote_bytes=$(to_bytes "$size_value" "$size_unit")
-                  
-                  if [ -n "$remote_bytes" ] && [ "$remote_bytes" -gt 0 ]; then
-                    echo "📊 Розмір на MinIO отримано: $remote_bytes байт"
-                    break # Успіх, виходимо з циклу спроб
-                  fi
-                fi
-              else
-                echo "ПОПЕРЕДЖЕННЯ: команда mc stat зазнала невдачі. Код виходу: $?"
-              fi
-              
-              if [ "$attempt" -lt 5 ]; then
-                echo "⏳ Очікування 3 секунди перед наступною спробою..."
-                sleep 3
-              fi
-            done
-            
-            if [ -z "$remote_bytes" ] || [ "$remote_bytes" = "0" ]; then
-              echo "❌ Не вдалося отримати розмір файлу на MinIO після 5 спроб."
-              exit 1
-            fi
-            
-            threshold=$(echo "scale=0; $local_size / 100" | bc)
-            diff=$(echo "$local_size - $remote_bytes" | bc)
-            abs_diff=${diff#-}
-            
-            if [ $(echo "$abs_diff <= $threshold" | bc -l) -eq 1 ]; then
-              echo "✅ Розміри співпадають (допуск ±$threshold байт)"
-            else
-              echo "⚠️ Розміри не співпадають!"
-              echo "📊 Локальний: $local_size байт"
-              echo "📊 Віддалений: $remote_bytes байт"
-              echo "🔍 Різниця: $diff байт"
-              exit 1
-            fi
-          done
+    for xml_file in xml-outputs/*.xml; do
+      bucket_name=$(basename "$xml_file" .xml)
+      local_size=$(wc -c < "$xml_file" | tr -d ' ')
+      
+      echo "🔍 Перевірка файлу: ${bucket_name}.xml"
+      echo "📊 Локальний розмір: $local_size байт"
+      
+      remote_bytes=""
+      for attempt in {1..5}; do
+        echo "🔄 Спроба $attempt з 5..."
+        
+        # Зберігаємо вивід mc stat для аналізу
+        stat_output=$(mc stat "minio/$bucket_name/${bucket_name}.xml" 2>&1)
+        stat_exit_code=$?
+        
+        echo "=== ВИВІД MC STAT (exit $stat_exit_code) ==="
+        echo "$stat_output"
+        echo "========================================"
+        
+        if [ $stat_exit_code -eq 0 ]; then
+          # Спроба отримати розмір з різних форматів виводу
+          size_line=$(echo "$stat_output" | grep -E 'Size :|Size:' || true)
           
-          echo "🎉 Всі файли успішно завантажені та перевірені!"
+          if [ -n "$size_line" ]; then
+            echo "Знайдено рядок розміру: $size_line"
+            
+            # Спроба парсингу різних форматів
+            if [[ "$size_line" =~ [0-9]+\ [A-Za-z]{2,3}$ ]]; then
+              size_value=$(echo "$size_line" | awk '{print $(NF-1)}')
+              size_unit=$(echo "$size_line" | awk '{print $NF}')
+              remote_bytes=$(to_bytes "$size_value" "$size_unit")
+            elif [[ "$size_line" =~ [0-9]+\ B$ ]]; then
+              remote_bytes=$(echo "$size_line" | awk '{print $(NF-1)}')
+            fi
+            
+            if [ -n "$remote_bytes" ] && [ "$remote_bytes" -gt 0 ]; then
+              echo "📊 Розмір на MinIO отримано: $remote_bytes байт"
+              break
+            fi
+          fi
+        fi
+        
+        echo "ПОПЕРЕДЖЕННЯ: Не вдалося отримати розмір. Статус: $stat_exit_code"
+        
+        if [ "$attempt" -lt 5 ]; then
+          echo "⏳ Очікування 3 секунди перед наступною спробою..."
+          sleep 3
+        fi
+      done
+      
+      if [ -z "$remote_bytes" ] || [ "$remote_bytes" = "0" ]; then
+        echo "❌ Не вдалося отримати розмір файлу на MinIO після 5 спроб."
+        
+        # Додаткова перевірка наявності бакета
+        echo "Перевірка наявності бакета: minio/$bucket_name"
+        mc ls "minio/$bucket_name/" || true
+        
+        exit 1
+      fi
+      
+      threshold=$(echo "scale=0; $local_size / 100" | bc)
+      diff=$(echo "$local_size - $remote_bytes" | bc)
+      abs_diff=${diff#-}
+      
+      echo "Локальний: $local_size, Віддалений: $remote_bytes, Допуск: $threshold, Різниця: $diff"
+      
+      if [ $(echo "$abs_diff <= $threshold" | bc -l) -eq 1 ]; then
+        echo "✅ Розміри співпадають (допуск ±$threshold байт)"
+      else
+        echo "⚠️ Розміри не співпадають!"
+        echo "📊 Локальний: $local_size байт"
+        echo "📊 Віддалений: $remote_bytes байт"
+        echo "🔍 Різниця: $diff байт"
+        exit 1
+      fi
+    done
+    
+    echo "🎉 Всі файли успішно завантажені та перевірені!"
+    set +x  # Вимкнення детального логування
 
       # Крок 13: Додаткова перевірка списку файлів
       - name: List all uploaded files
