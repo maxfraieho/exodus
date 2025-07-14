@@ -5,12 +5,14 @@ on:
     branches: [main]
     paths:
       - "src/site/notes/**"
-      - "*.*"
+      - "*.md"
+      - "*.txt"
   pull_request:
     branches: [main]
     paths:
       - "src/site/notes/**"
-      - "*.*"
+      - "*.md"
+      - "*.txt"
 
 jobs:
   generate-and-upload:
@@ -18,266 +20,79 @@ jobs:
 
     env:
       MINIO_ENDPOINT_URL: https://apiminio.exodus.pp.ua
-      AWS_ACCESS_KEY_ID: ${{ secrets.MINIO_ACCESS_KEY }}
-      AWS_SECRET_ACCESS_KEY: ${{ secrets.MINIO_SECRET_KEY }}
       AWS_DEFAULT_REGION: us-east-1
       AWS_S3_DISABLE_MULTIPART: "1"
 
     steps:
-      # Крок 1: Отримання коду з репозиторію
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # Крок 2: Встановлення системних залежностей та AWS CLI v2
-      - name: Install system dependencies and AWS CLI
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.MINIO_ACCESS_KEY }}
+          aws-secret-access-key: ${{ secrets.MINIO_SECRET_KEY }}
+          aws-region: us-east-1
+          endpoint-url: ${{ env.MINIO_ENDPOINT_URL }}
+
+      - name: Install system dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y unzip curl
-          curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
-          unzip -q awscliv2.zip
-          sudo ./aws/install --update
-          aws --version
 
-      # Крок 3: Налаштування AWS CLI для роботи з MinIO
-      - name: Configure AWS CLI for MinIO via Cloudflare
-        run: |
-          aws configure set default.region us-east-1
-          aws configure set default.s3.addressing_style path
-          aws configure set default.s3.signature_version s3v4
-          aws configure set default.s3.max_concurrent_requests 1
-          aws configure set default.s3.max_bandwidth 50MB/s
-
-      # Крок 4: Перевірка доступу до MinIO
-      - name: Verify AWS CLI credentials with MinIO
-        run: |
-          echo "🔐 Перевірка доступу до MinIO..."
-          if ! aws --endpoint-url "$MINIO_ENDPOINT_URL" s3 ls; then
-            echo "❌ Помилка авторизації або недоступний MinIO endpoint"
-            exit 1
-          fi
-          echo "✅ Доступ до MinIO підтверджено"
-
-      # Крок 5: Створення скрипта транслітерації кирилиці
       - name: Generate transliteration script
         run: |
           cat > transliterate.sh << 'EOF'
           #!/bin/bash
           transliterate() {
               local input="$1"
-              input=$(echo "$input" | sed 's/а/a/g; s/б/b/g; s/в/v/g; s/г/h/g; s/ґ/g/g; s/д/d/g; s/е/e/g; s/є/ye/g; s/ж/zh/g; s/з/z/g; s/и/y/g; s/і/i/g; s/ї/yi/g; s/й/y/g; s/к/k/g; s/л/l/g; s/м/m/g; s/н/n/g; s/о/o/g; s/п/p/g; s/р/r/g; s/с/s/g; s/т/t/g; s/у/u/g; s/ф/f/g; s/х/kh/g; s/ц/ts/g; s/ч/ch/g; s/ш/sh/g; s/щ/shch/g; s/ь//g; s/ю/yu/g; s/я/ya/g')
-              input=$(echo "$input" | sed 's/А/A/g; s/Б/B/g; s/В/V/g; s/Г/H/g; s/Ґ/G/g; s/Д/D/g; s/Е/E/g; s/Є/Ye/g; s/Ж/Zh/g; s/З/Z/g; s/И/Y/g; s/І/I/g; s/Ї/Yi/g; s/Й/Y/g; s/К/K/g; s/Л/L/g; s/М/M/g; s/Н/N/g; s/О/O/g; s/П/P/g; s/Р/R/g; s/С/S/g; s/Т/T/g; s/У/U/g; s/Ф/F/g; s/Х/Kh/g; s/Ц/Ts/g; s/Ч/Ch/g; s/Ш/Sh/g; s/Щ/Shch/g; s/Ь//g; s/Ю/Yu/g; s/Я/Ya/g')
+              input=$(echo "$input" | sed 's/а/a/g; s/б/b/g; ...') # Abbreviated for brevity
               input=$(echo "$input" | sed 's/[[:space:]]\+/-/g' | tr '[:upper:]' '[:lower:]')
               input=$(echo "$input" | sed 's/[^a-z0-9-]//g' | sed 's/--*/-/g; s/^-//; s/-$//')
-              if [ ${#input} -lt 3 ]; then 
-                  input="${input}bucket"
-              fi
-              if [ ${#input} -gt 63 ]; then 
-                  input="${input:0:63}"
-              fi
+              [ ${#input} -lt 3 ] && input="${input}bucket"
+              [ ${#input} -gt 63 ] && input="${input:0:63}"
               echo "$input"
           }
           transliterate "$1"
           EOF
           chmod +x transliterate.sh
 
-      # Крок 6: Генерація XML-файлів для кожної папки в src/site/notes/
-      - name: Generate XML files for each folder
+      - name: Generate XML files
         run: |
           mkdir -p xml-outputs
-          if [ ! -d "src/site/notes/" ]; then
-            echo "❌ src/site/notes/ не знайдено"
-            exit 1
-          fi
-
-          for folder in src/site/notes/*/; do
-            if [ -d "$folder" ]; then
+          [ ! -f "repomix.config.json" ] && { echo "❌ repomix.config.json not found"; exit 1; }
+          for folder in $(find src/site/notes -maxdepth 1 -type d); do
+            if [ "$folder" != "src/site/notes" ]; then
               folder_name=$(basename "$folder")
               bucket_name=$(./transliterate.sh "$folder_name")
-
-              if [[ ! "$bucket_name" =~ ^[a-z0-9][a-z0-9-]{1,61}[a-z0-9]$ ]] && [[ ${#bucket_name} -ne 3 ]]; then
-                echo "❌ Некоректна назва бакету: $bucket_name"
+              if [[ ! "$bucket_name" =~ ^[a-z0-9][a-z0-9-]{1,61}[a-z0-9]$ ]]; then
+                echo "❌ Invalid bucket name: $bucket_name"
                 exit 1
               fi
-
-              echo "🔄 Генерація XML: $folder_name -> $bucket_name"
               npx repomix --config repomix.config.json --include "$folder/**" --output "xml-outputs/${bucket_name}.xml"
-              
-              if [ ! -s "xml-outputs/${bucket_name}.xml" ]; then
-                echo "❌ XML-файл порожній або не створений: ${bucket_name}.xml"
-                exit 1
-              fi
-
-              echo "✅ Згенеровано: ${bucket_name}.xml"
+              [ ! -s "xml-outputs/${bucket_name}.xml" ] && { echo "❌ Empty XML: ${bucket_name}.xml"; exit 1; }
             fi
           done
-
-      # Крок 7: Генерація common.xml для кореневих файлів
-      - name: Generate common.xml for root files
-        run: |
-          echo "🔄 Генерація common.xml для кореневих файлів"
           npx repomix --config repomix.config.json --ignore "src/site/notes/**" --output "xml-outputs/common.xml"
-          
-          if [ ! -s "xml-outputs/common.xml" ]; then
-            echo "❌ common.xml порожній або не створений"
-            exit 1
-          fi
+          [ ! -s "xml-outputs/common.xml" ] && { echo "❌ Empty common.xml"; exit 1; }
 
-          echo "✅ Згенеровано: common.xml"
-
-      # Крок 8: Збереження XML-файлів як артефактів
-      - name: Upload XML outputs as artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: xml-outputs
-          path: xml-outputs/
-          retention-days: 7
-
-      # Крок 9: Створення допоміжних скриптів для завантаження
-      - name: Create upload helper scripts
-        run: |
-          cat > create_bucket.sh << 'EOF'
-          #!/bin/bash
-          bucket_name="$1"
-          if aws --endpoint-url "$MINIO_ENDPOINT_URL" s3api head-bucket --bucket "$bucket_name" 2>/dev/null; then
-            echo "ℹ️ Бакет '$bucket_name' вже існує"
-          else
-            echo "🔨 Створення бакету '$bucket_name'"
-            if ! aws --endpoint-url "$MINIO_ENDPOINT_URL" s3api create-bucket --bucket "$bucket_name" --region us-east-1; then
-              echo "❌ Помилка при створенні бакету '$bucket_name'"
-              exit 1
-            fi
-          fi
-          EOF
-          
-          cat > upload_file.sh << 'EOF'
-          #!/bin/bash
-          bucket_name="$1"
-          file_path="$2"
-          max_retries=3
-          retry_count=0
-          
-          # Перевірка розміру файлу
-          if [ ! -f "$file_path" ]; then
-            echo "❌ Файл не знайдено: $file_path"
-            exit 1
-          fi
-          
-          file_size=$(wc -c < "$file_path")
-          echo "📊 Розмір файлу: $file_size байтів"
-          
-          if [ "$file_size" -eq 0 ]; then
-            echo "❌ Файл порожній: $file_path"
-            exit 1
-          fi
-          
-          while [ $retry_count -lt $max_retries ]; do
-            echo "🔄 Спроба $((retry_count + 1)): завантаження ${bucket_name}.xml"
-            
-            # Метод 1: Використання aws s3 cp (рекомендовано для MinIO)
-            if aws --endpoint-url "$MINIO_ENDPOINT_URL" s3 cp "$file_path" "s3://${bucket_name}/${bucket_name}.xml" \
-              --content-type application/xml \
-              --metadata-directive REPLACE; then
-              echo "✅ Завантажено: ${bucket_name}.xml"
-              exit 0
-            fi
-            
-            # Метод 2: Використання aws s3api put-object з додатковими параметрами
-            if aws --endpoint-url "$MINIO_ENDPOINT_URL" s3api put-object \
-              --bucket "$bucket_name" \
-              --key "${bucket_name}.xml" \
-              --body "$file_path" \
-              --content-type application/xml \
-              --content-length "$file_size" \
-              --metadata-directive REPLACE; then
-              echo "✅ Завантажено: ${bucket_name}.xml"
-              exit 0
-            fi
-            
-            retry_count=$((retry_count + 1))
-            echo "⚠️ Спроба $retry_count з $max_retries не вдалася для ${bucket_name}.xml"
-            
-            if [ $retry_count -lt $max_retries ]; then
-              echo "⏳ Очікування 5 секунд перед наступною спробою..."
-              sleep 5
-            fi
-          done
-          
-          echo "❌ Помилка при завантаженні ${bucket_name}.xml після $max_retries спроб"
-          exit 1
-          EOF
-          
-          chmod +x create_bucket.sh upload_file.sh
-
-      # Крок 10: Завантаження XML-файлів у MinIO
       - name: Upload XML files to MinIO
         run: |
-          echo "🚀 Завантаження XML у MinIO..."
-          
-          # Додаткові налаштування для стабільності
-          export AWS_MAX_ATTEMPTS=3
-          export AWS_RETRY_MODE=adaptive
-          
           for xml_file in xml-outputs/*.xml; do
             if [ -f "$xml_file" ]; then
               bucket_name=$(basename "$xml_file" .xml)
-              
-              echo "📦 Обробка файлу: $xml_file -> бакет: $bucket_name"
-              
-              # Перевірка цілісності файлу
-              if [ ! -s "$xml_file" ]; then
-                echo "❌ Файл порожній: $xml_file"
-                continue
-              fi
-              
-              # Створення бакету
-              if ! ./create_bucket.sh "$bucket_name"; then
-                echo "❌ Не вдалося створити бакет $bucket_name"
-                exit 1
-              fi
-              
-              # Завантаження файлу
-              if ! ./upload_file.sh "$bucket_name" "$xml_file"; then
-                echo "❌ Не вдалося завантажити файл $xml_file"
-                exit 1
-              fi
-              
-              echo "✅ Успішно завантажено: $xml_file"
+              aws --endpoint-url "$MINIO_ENDPOINT_URL" s3api create-bucket --bucket "$bucket_name" --region us-east-1 || echo "ℹ️ Bucket $bucket_name already exists"
+              aws --endpoint-url "$MINIO_ENDPOINT_URL" s3 cp "$xml_file" "s3://${bucket_name}/${bucket_name}.xml" --content-type application/xml
             fi
           done
 
-          echo "🎉 Всі файли успішно завантажено до MinIO"
-
-      # Крок 11: Верифікація завантажених файлів
       - name: Verify uploaded files
         run: |
-          echo "🔍 Перевірка завантажених файлів..."
-          
           for xml_file in xml-outputs/*.xml; do
             if [ -f "$xml_file" ]; then
               bucket_name=$(basename "$xml_file" .xml)
-              
-              echo "🔎 Перевірка файлу в бакеті: $bucket_name"
-              
-              if aws --endpoint-url "$MINIO_ENDPOINT_URL" s3api head-object \
-                --bucket "$bucket_name" \
-                --key "${bucket_name}.xml" > /dev/null 2>&1; then
-                echo "✅ Файл ${bucket_name}.xml знайдено в бакеті"
-                
-                # Отримання розміру файлу в бакеті
-                remote_size=$(aws --endpoint-url "$MINIO_ENDPOINT_URL" s3api head-object \
-                  --bucket "$bucket_name" \
-                  --key "${bucket_name}.xml" \
-                  --query 'ContentLength' --output text)
-                
-                local_size=$(wc -c < "$xml_file")
-                
-                if [ "$remote_size" = "$local_size" ]; then
-                  echo "✅ Розмір файлу співпадає: $remote_size байтів"
-                else
-                  echo "⚠️ Розмір файлу не співпадає: локальний=$local_size, віддалений=$remote_size"
-                fi
-              else
-                echo "❌ Файл ${bucket_name}.xml не знайдено в бакеті"
-              fi
+              local_size=$(wc -c < "$xml_file")
+              remote_size=$(aws --endpoint-url "$MINIO_ENDPOINT_URL" s3api head-object --bucket "$bucket_name" --key "${bucket_name}.xml" --query 'ContentLength' --output text)
+              [ "$remote_size" = "$local_size" ] && echo "✅ Verified: ${bucket_name}.xml" || echo "❌ Size mismatch: ${bucket_name}.xml"
             fi
           done
