@@ -49,10 +49,10 @@ jobs:
           AWS_SECRET_ACCESS_KEY: ${{ secrets.MINIO_SECRET_KEY }}
         run: |
           echo "🔐 Перевірка доступу до MinIO..."
-          aws --endpoint-url "$MINIO_ENDPOINT_URL" s3 ls || {
+          if ! aws --endpoint-url "$MINIO_ENDPOINT_URL" s3 ls; then
             echo "❌ Помилка авторизації або недоступний MinIO endpoint"
             exit 1
-          }
+          fi
           echo "✅ Доступ до MinIO підтверджено"
 
       - name: Generate transliteration script
@@ -82,23 +82,25 @@ jobs:
           fi
 
           for folder in src/site/notes/*/; do
-            [ -d "$folder" ] || continue
-            folder_name=$(basename "$folder")
-            bucket_name=$(./transliterate.sh "$folder_name")
+            if [ -d "$folder" ]; then
+              folder_name=$(basename "$folder")
+              bucket_name=$(./transliterate.sh "$folder_name")
 
-            if [[ ! "$bucket_name" =~ ^[a-z0-9][a-z0-9-]{1,61}[a-z0-9]$ ]] && [[ ${#bucket_name} -ne 3 ]]; then
-              echo "❌ Некоректна назва бакету: $bucket_name"
-              exit 1
+              if [[ ! "$bucket_name" =~ ^[a-z0-9][a-z0-9-]{1,61}[a-z0-9]$ ]] && [[ ${#bucket_name} -ne 3 ]]; then
+                echo "❌ Некоректна назва бакету: $bucket_name"
+                exit 1
+              fi
+
+              echo "🔄 Генерація XML: $folder_name -> $bucket_name"
+              npx repomix --config repomix.config.json --include "$folder/**" --output "xml-outputs/${bucket_name}.xml"
+
+              if [ ! -s "xml-outputs/${bucket_name}.xml" ]; then
+                echo "❌ XML-файл порожній або не створений"
+                exit 1
+              fi
+
+              echo "✅ Згенеровано: ${bucket_name}.xml"
             fi
-
-            echo "🔄 Генерація XML: $folder_name -> $bucket_name"
-            npx repomix --config repomix.config.json --include "$folder/**" --output "xml-outputs/${bucket_name}.xml"
-
-            [ -s "xml-outputs/${bucket_name}.xml" ] || {
-              echo "❌ XML-файл порожній або не створений"
-              exit 1
-            }
-            echo "✅ Згенеровано: ${bucket_name}.xml"
           done
 
       - name: Generate common.xml for root files
@@ -106,10 +108,11 @@ jobs:
           echo "🔄 Генерація common.xml"
           npx repomix --config repomix.config.json --ignore "src/site/notes/**" --output "xml-outputs/common.xml"
 
-          [ -s "xml-outputs/common.xml" ] || {
+          if [ ! -s "xml-outputs/common.xml" ]; then
             echo "❌ common.xml порожній або не створений"
             exit 1
-          }
+          fi
+
           echo "✅ Згенеровано: common.xml"
 
       - name: Upload XML outputs as artifacts
@@ -135,15 +138,16 @@ jobs:
           echo "✅ Завантажено: common.xml"
 
           for xml_file in xml-outputs/*.xml; do
-            [ "$(basename "$xml_file")" = "common.xml" ] && continue
-            bucket_name=$(basename "$xml_file" .xml)
+            if [ -f "$xml_file" ] && [ "$(basename "$xml_file")" != "common.xml" ]; then
+              bucket_name=$(basename "$xml_file" .xml)
 
-            aws --endpoint-url "$MINIO_ENDPOINT_URL" s3api create-bucket --bucket "$bucket_name" --region us-east-1 || echo "ℹ️ Бакет '$bucket_name' вже існує"
-            aws --endpoint-url "$MINIO_ENDPOINT_URL" s3api put-object --bucket "$bucket_name" --key "${bucket_name}.xml" --body "$xml_file" --content-type application/xml || {
-              echo "❌ Помилка при завантаженні ${bucket_name}.xml"
-              exit 1
-            }
-            echo "✅ Завантажено: ${bucket_name}.xml"
+              aws --endpoint-url "$MINIO_ENDPOINT_URL" s3api create-bucket --bucket "$bucket_name" --region us-east-1 || echo "ℹ️ Бакет '$bucket_name' вже існує"
+              aws --endpoint-url "$MINIO_ENDPOINT_URL" s3api put-object --bucket "$bucket_name" --key "${bucket_name}.xml" --body "$xml_file" --content-type application/xml || {
+                echo "❌ Помилка при завантаженні ${bucket_name}.xml"
+                exit 1
+              }
+              echo "✅ Завантажено: ${bucket_name}.xml"
+            fi
           done
 
           echo "🎉 Всі файли успішно завантажено"
@@ -198,10 +202,10 @@ jobs:
           AWS_SECRET_ACCESS_KEY: ${{ secrets.MINIO_SECRET_KEY }}
         run: |
           echo "🔐 Перевірка доступу до MinIO..."
-          aws --endpoint-url "$MINIO_ENDPOINT_URL" s3 ls || {
+          if ! aws --endpoint-url "$MINIO_ENDPOINT_URL" s3 ls; then
             echo "❌ Помилка авторизації або недоступний MinIO endpoint"
             exit 1
-          }
+          fi
           echo "✅ Доступ до MinIO підтверджено"
 
       - name: Generate transliteration script
@@ -231,23 +235,25 @@ jobs:
           fi
 
           for folder in src/site/notes/*/; do
-            [ -d "$folder" ] || continue
-            folder_name=$(basename "$folder")
-            bucket_name=$(./transliterate.sh "$folder_name")
+            if [ -d "$folder" ]; then
+              folder_name=$(basename "$folder")
+              bucket_name=$(./transliterate.sh "$folder_name")
 
-            if [[ ! "$bucket_name" =~ ^[a-z0-9][a-z0-9-]{1,61}[a-z0-9]$ ]] && [[ ${#bucket_name} -ne 3 ]]; then
-              echo "❌ Некоректна назва бакету: $bucket_name"
-              exit 1
+              if [[ ! "$bucket_name" =~ ^[a-z0-9][a-z0-9-]{1,61}[a-z0-9]$ ]] && [[ ${#bucket_name} -ne 3 ]]; then
+                echo "❌ Некоректна назва бакету: $bucket_name"
+                exit 1
+              fi
+
+              echo "🔄 Генерація XML: $folder_name -> $bucket_name"
+              npx repomix --config repomix.config.json --include "$folder/**" --output "xml-outputs/${bucket_name}.xml"
+
+              if [ ! -s "xml-outputs/${bucket_name}.xml" ]; then
+                echo "❌ XML-файл порожній або не створений"
+                exit 1
+              fi
+
+              echo "✅ Згенеровано: ${bucket_name}.xml"
             fi
-
-            echo "🔄 Генерація XML: $folder_name -> $bucket_name"
-            npx repomix --config repomix.config.json --include "$folder/**" --output "xml-outputs/${bucket_name}.xml"
-
-            [ -s "xml-outputs/${bucket_name}.xml" ] || {
-              echo "❌ XML-файл порожній або не створений"
-              exit 1
-            }
-            echo "✅ Згенеровано: ${bucket_name}.xml"
           done
 
       - name: Generate common.xml for root files
@@ -255,10 +261,11 @@ jobs:
           echo "🔄 Генерація common.xml"
           npx repomix --config repomix.config.json --ignore "src/site/notes/**" --output "xml-outputs/common.xml"
 
-          [ -s "xml-outputs/common.xml" ] || {
+          if [ ! -s "xml-outputs/common.xml" ]; then
             echo "❌ common.xml порожній або не створений"
             exit 1
-          }
+          fi
+
           echo "✅ Згенеровано: common.xml"
 
       - name: Upload XML outputs as artifacts
@@ -284,15 +291,16 @@ jobs:
           echo "✅ Завантажено: common.xml"
 
           for xml_file in xml-outputs/*.xml; do
-            [ "$(basename "$xml_file")" = "common.xml" ] && continue
-            bucket_name=$(basename "$xml_file" .xml)
+            if [ -f "$xml_file" ] && [ "$(basename "$xml_file")" != "common.xml" ]; then
+              bucket_name=$(basename "$xml_file" .xml)
 
-            aws --endpoint-url "$MINIO_ENDPOINT_URL" s3api create-bucket --bucket "$bucket_name" --region us-east-1 || echo "ℹ️ Бакет '$bucket_name' вже існує"
-            aws --endpoint-url "$MINIO_ENDPOINT_URL" s3api put-object --bucket "$bucket_name" --key "${bucket_name}.xml" --body "$xml_file" --content-type application/xml || {
-              echo "❌ Помилка при завантаженні ${bucket_name}.xml"
-              exit 1
-            }
-            echo "✅ Завантажено: ${bucket_name}.xml"
+              aws --endpoint-url "$MINIO_ENDPOINT_URL" s3api create-bucket --bucket "$bucket_name" --region us-east-1 || echo "ℹ️ Бакет '$bucket_name' вже існує"
+              aws --endpoint-url "$MINIO_ENDPOINT_URL" s3api put-object --bucket "$bucket_name" --key "${bucket_name}.xml" --body "$xml_file" --content-type application/xml || {
+                echo "❌ Помилка при завантаженні ${bucket_name}.xml"
+                exit 1
+              }
+              echo "✅ Завантажено: ${bucket_name}.xml"
+            fi
           done
 
           echo "🎉 Всі файли успішно завантажено"
