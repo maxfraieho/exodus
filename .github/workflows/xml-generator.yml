@@ -43,6 +43,9 @@ jobs:
         run: |
           aws configure set default.region us-east-1
           aws configure set default.s3.addressing_style path
+          aws configure set default.s3.signature_version s3v4
+          aws configure set default.s3.max_concurrent_requests 1
+          aws configure set default.s3.max_bandwidth 50MB/s
 
       # Крок 4: Перевірка доступу до MinIO
       - name: Verify AWS CLI credentials with MinIO
@@ -153,20 +156,49 @@ jobs:
           max_retries=3
           retry_count=0
           
+          # Перевірка розміру файлу
+          if [ ! -f "$file_path" ]; then
+            echo "❌ Файл не знайдено: $file_path"
+            exit 1
+          fi
+          
+          file_size=$(wc -c < "$file_path")
+          echo "📊 Розмір файлу: $file_size байтів"
+          
+          if [ "$file_size" -eq 0 ]; then
+            echo "❌ Файл порожній: $file_path"
+            exit 1
+          fi
+          
           while [ $retry_count -lt $max_retries ]; do
+            echo "🔄 Спроба $((retry_count + 1)): завантаження ${bucket_name}.xml"
+            
+            # Метод 1: Використання aws s3 cp (рекомендовано для MinIO)
+            if aws --endpoint-url "$MINIO_ENDPOINT_URL" s3 cp "$file_path" "s3://${bucket_name}/${bucket_name}.xml" \
+              --content-type application/xml \
+              --metadata-directive REPLACE; then
+              echo "✅ Завантажено: ${bucket_name}.xml"
+              exit 0
+            fi
+            
+            # Метод 2: Використання aws s3api put-object з додатковими параметрами
             if aws --endpoint-url "$MINIO_ENDPOINT_URL" s3api put-object \
               --bucket "$bucket_name" \
               --key "${bucket_name}.xml" \
               --body "$file_path" \
-              --content-type application/xml; then
+              --content-type application/xml \
+              --content-length "$file_size" \
+              --metadata-directive REPLACE; then
               echo "✅ Завантажено: ${bucket_name}.xml"
               exit 0
-            else
-              retry_count=$((retry_count + 1))
-              echo "⚠️ Спроба $retry_count з $max_retries не вдалася для ${bucket_name}.xml"
-              if [ $retry_count -lt $max_retries ]; then
-                sleep 2
-              fi
+            fi
+            
+            retry_count=$((retry_count + 1))
+            echo "⚠️ Спроба $retry_count з $max_retries не вдалася для ${bucket_name}.xml"
+            
+            if [ $retry_count -lt $max_retries ]; then
+              echo "⏳ Очікування 5 секунд перед наступною спробою..."
+              sleep 5
             fi
           done
           
@@ -181,11 +213,21 @@ jobs:
         run: |
           echo "🚀 Завантаження XML у MinIO..."
           
+          # Додаткові налаштування для стабільності
+          export AWS_MAX_ATTEMPTS=3
+          export AWS_RETRY_MODE=adaptive
+          
           for xml_file in xml-outputs/*.xml; do
             if [ -f "$xml_file" ]; then
               bucket_name=$(basename "$xml_file" .xml)
               
               echo "📦 Обробка файлу: $xml_file -> бакет: $bucket_name"
+              
+              # Перевірка цілісності файлу
+              if [ ! -s "$xml_file" ]; then
+                echo "❌ Файл порожній: $xml_file"
+                continue
+              fi
               
               # Створення бакету
               if ! ./create_bucket.sh "$bucket_name"; then
@@ -198,7 +240,44 @@ jobs:
                 echo "❌ Не вдалося завантажити файл $xml_file"
                 exit 1
               fi
+              
+              echo "✅ Успішно завантажено: $xml_file"
             fi
           done
 
           echo "🎉 Всі файли успішно завантажено до MinIO"
+
+      # Крок 11: Верифікація завантажених файлів
+      - name: Verify uploaded files
+        run: |
+          echo "🔍 Перевірка завантажених файлів..."
+          
+          for xml_file in xml-outputs/*.xml; do
+            if [ -f "$xml_file" ]; then
+              bucket_name=$(basename "$xml_file" .xml)
+              
+              echo "🔎 Перевірка файлу в бакеті: $bucket_name"
+              
+              if aws --endpoint-url "$MINIO_ENDPOINT_URL" s3api head-object \
+                --bucket "$bucket_name" \
+                --key "${bucket_name}.xml" > /dev/null 2>&1; then
+                echo "✅ Файл ${bucket_name}.xml знайдено в бакеті"
+                
+                # Отримання розміру файлу в бакеті
+                remote_size=$(aws --endpoint-url "$MINIO_ENDPOINT_URL" s3api head-object \
+                  --bucket "$bucket_name" \
+                  --key "${bucket_name}.xml" \
+                  --query 'ContentLength' --output text)
+                
+                local_size=$(wc -c < "$xml_file")
+                
+                if [ "$remote_size" = "$local_size" ]; then
+                  echo "✅ Розмір файлу співпадає: $remote_size байтів"
+                else
+                  echo "⚠️ Розмір файлу не співпадає: локальний=$local_size, віддалений=$remote_size"
+                fi
+              else
+                echo "❌ Файл ${bucket_name}.xml не знайдено в бакеті"
+              fi
+            fi
+          done
