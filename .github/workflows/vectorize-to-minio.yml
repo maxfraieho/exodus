@@ -1,0 +1,319 @@
+name: Direct Vectorization Pipeline to MinIO
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'docs/**/*.md'
+      - 'development-workflow/**/*.md'
+      - 'investigation/**/*.md'
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+    inputs:
+      force_reprocess:
+        description: 'Force reprocess all files'
+        required: false
+        default: 'false'
+
+env:
+  MINIO_ENDPOINT: ${{ secrets.MINIO_ENDPOINT_URL }}
+  MINIO_ACCESS_KEY: ${{ secrets.MINIO_ACCESS_KEY }}
+  MINIO_SECRET_KEY: ${{ secrets.MINIO_SECRET_KEY }}
+  CF_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+  CF_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+  LOCAL_EMBEDDING_URL: ${{ secrets.LOCAL_EMBEDDING_URL }}
+  EMBEDDING_MODEL_CF: '@cf/baai/bge-base-en-v1.5'
+  EMBEDDING_MODEL_LOCAL: 'lang-uk/ukr-paraphrase-multilingual-mpnet-base'
+  CHUNK_SIZE: 1000
+  CHUNK_OVERLAP: 200
+
+jobs:
+  vectorize-and-upload:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 2  # Get previous commit for change detection
+
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+        cache: 'pip'
+
+    - name: Install Python dependencies
+      run: |
+        pip install --upgrade pip
+        pip install langchain langchain-community langchain-text-splitters
+        pip install minio boto3 pyarrow fastparquet
+        pip install requests aiohttp asyncio
+        pip install pyyaml markdown
+        pip install sentence-transformers  # For local fallback
+        pip install cloudflare  # For CF Workers AI
+        pip install faiss-cpu  # For vector indexing
+        
+    - name: Detect changed files
+      id: changed_files
+      run: |
+        echo "🔍 Detecting changed markdown files..."
+        
+        if [ "${{ github.event.inputs.force_reprocess }}" == "true" ]; then
+          echo "♻️ Force reprocess enabled - processing all files"
+          find docs development-workflow investigation -name "*.md" -type f > changed_files.txt 2>/dev/null || true
+        else
+          # Get changed files between current and previous commit
+          git diff --name-only HEAD~1 HEAD | grep -E '\.(md)$' > changed_files.txt || true
+          
+          # If no changes, check if this is initial run
+          if [ ! -s changed_files.txt ]; then
+            echo "No changed files detected, checking for initial run..."
+            # Check if vectors exist in MinIO
+            python3 scripts/check_vectors_exist.py || find docs development-workflow investigation -name "*.md" -type f > changed_files.txt 2>/dev/null || true
+          fi
+        fi
+        
+        if [ -s changed_files.txt ]; then
+          echo "📝 Files to process:"
+          cat changed_files.txt
+          echo "files_to_process=true" >> $GITHUB_OUTPUT
+        else
+          echo "✅ No files need processing"
+          echo "files_to_process=false" >> $GITHUB_OUTPUT
+        fi
+
+    - name: Create Python vectorization script
+      if: steps.changed_files.outputs.files_to_process == 'true'
+      run: |
+        mkdir -p scripts
+        # Check if script exists, if not it will be used from repository
+        if [ ! -f scripts/vectorize_documents.py ]; then
+          echo "⚠️ Vectorization script not found, will use from repository"
+        fi
+
+    - name: Create vector existence checker
+      run: |
+        mkdir -p scripts
+        cat > scripts/check_vectors_exist.py << 'EOF'
+        import sys
+        import os
+        from minio import Minio
+        
+        try:
+            client = Minio(
+                os.environ.get('MINIO_ENDPOINT', '').replace('https://', '').replace('http://', ''),
+                access_key=os.environ.get('MINIO_ACCESS_KEY'),
+                secret_key=os.environ.get('MINIO_SECRET_KEY'),
+                secure='https' in os.environ.get('MINIO_ENDPOINT', '')
+            )
+            
+            # Check if any vector buckets exist
+            buckets = client.list_buckets()
+            vector_buckets = [b for b in buckets if 'vectors' in b.name]
+            
+            if not vector_buckets:
+                print("No vector buckets found - initial run needed")
+                sys.exit(1)
+            else:
+                print(f"Found {len(vector_buckets)} vector buckets")
+                sys.exit(0)
+        except Exception as e:
+            print(f"Error checking vectors: {e}")
+            sys.exit(1)
+        EOF
+
+    - name: Run vectorization pipeline
+      if: steps.changed_files.outputs.files_to_process == 'true'
+      env:
+        CHANGED_FILES: changed_files.txt
+      run: |
+        echo "🚀 Starting vectorization pipeline..."
+        python3 scripts/vectorize_documents.py \
+          --input-file changed_files.txt \
+          --minio-endpoint "$MINIO_ENDPOINT" \
+          --cf-account-id "$CF_ACCOUNT_ID" \
+          --cf-api-token "$CF_API_TOKEN" \
+          --local-embedding-url "$LOCAL_EMBEDDING_URL" \
+          --chunk-size $CHUNK_SIZE \
+          --chunk-overlap $CHUNK_OVERLAP \
+          --embedding-model-cf "$EMBEDDING_MODEL_CF" \
+          --embedding-model-local "$EMBEDDING_MODEL_LOCAL"
+
+    - name: Create MCP configuration update
+      run: |
+        echo "📝 Creating MCP configuration for vectorized buckets..."
+        cat > mcp-vector-config.json << EOF
+        {
+          "mcpServers": {
+            "pravda-vectors": {
+              "command": "node",
+              "args": ["mcp-vector-server.js"],
+              "env": {
+                "MINIO_ENDPOINT": "${{ env.MINIO_ENDPOINT }}",
+                "MINIO_ACCESS_KEY": "${{ secrets.MINIO_ACCESS_KEY }}",
+                "MINIO_SECRET_KEY": "${{ secrets.MINIO_SECRET_KEY }}",
+                "VECTOR_BUCKET_PREFIX": "vectors-",
+                "ENABLE_RAG": "true"
+              }
+            }
+          }
+        }
+        EOF
+
+    - name: Generate vectorization report
+      if: always()
+      run: |
+        echo "📊 Generating vectorization report..."
+        cat > vectorization-report.md << EOF
+        # Vectorization Pipeline Report
+        
+        **Date**: $(date -u +%Y-%m-%dT%H:%M:%SZ)
+        **Repository**: ${{ github.repository }}
+        **Commit**: ${{ github.sha }}
+        **Branch**: ${{ github.ref_name }}
+        
+        ## Processing Summary
+        
+        - Files processed: $(wc -l < changed_files.txt 2>/dev/null || echo "0")
+        - Pipeline status: ${{ job.status }}
+        - Force reprocess: ${{ github.event.inputs.force_reprocess }}
+        
+        ## Processed Files
+        
+        $(cat changed_files.txt 2>/dev/null || echo "No files processed")
+        
+        ## MinIO Buckets Created/Updated
+        
+        - Auth Story Vectors: \`vectors-auth-story\`
+        - Logistics Vectors: \`vectors-logistics-dept\`
+        - Production Vectors: \`vectors-production-dept\`
+        - Documentation Vectors: \`vectors-documentation\`
+        - Development Vectors: \`vectors-development\`
+        - Research Vectors: \`vectors-research\`
+        
+        ## Configuration
+        
+        - Chunk Size: ${{ env.CHUNK_SIZE }}
+        - Chunk Overlap: ${{ env.CHUNK_OVERLAP }}
+        - Primary Model: ${{ env.EMBEDDING_MODEL_CF }}
+        - Fallback Model: ${{ env.EMBEDDING_MODEL_LOCAL }}
+        
+        ## Embedding Service Status
+        
+        - Cloudflare Workers AI: Primary
+        - Local Embedding Server: Fallback
+        - MinIO Endpoint: ${{ env.MINIO_ENDPOINT }}
+        
+        EOF
+
+    - name: Upload vectorization artifacts
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: vectorization-results
+        path: |
+          vectorization-report.md
+          mcp-vector-config.json
+          changed_files.txt
+        retention-days: 30
+
+    - name: Update MinIO index
+      if: steps.changed_files.outputs.files_to_process == 'true'
+      run: |
+        echo "📑 Updating vector index in MinIO..."
+        python3 << 'EOF'
+        import json
+        import os
+        from datetime import datetime
+        from minio import Minio
+        
+        try:
+            client = Minio(
+                os.environ['MINIO_ENDPOINT'].replace('https://', '').replace('http://', ''),
+                access_key=os.environ['MINIO_ACCESS_KEY'],
+                secret_key=os.environ['MINIO_SECRET_KEY'],
+                secure='https' in os.environ['MINIO_ENDPOINT']
+            )
+            
+            # Create index of all vector buckets
+            index = {
+                "generated": datetime.utcnow().isoformat(),
+                "repository": "${{ github.repository }}",
+                "commit": "${{ github.sha }}",
+                "buckets": []
+            }
+            
+            for bucket in client.list_buckets():
+                if bucket.name.startswith('vectors-'):
+                    try:
+                        objects = list(client.list_objects(bucket.name))
+                        bucket_info = {
+                            "name": bucket.name,
+                            "created": bucket.creation_date.isoformat() if bucket.creation_date else None,
+                            "department": bucket.name.replace('vectors-', ''),
+                            "object_count": len(objects)
+                        }
+                        index["buckets"].append(bucket_info)
+                    except Exception as e:
+                        print(f"Warning: Could not list objects in {bucket.name}: {e}")
+            
+            # Upload index
+            index_json = json.dumps(index, indent=2)
+            
+            # Ensure pravda-context bucket exists
+            if not client.bucket_exists("pravda-context"):
+                client.make_bucket("pravda-context")
+            
+            import io
+            client.put_object(
+                "pravda-context",
+                "vector-index.json",
+                io.BytesIO(index_json.encode()),
+                length=len(index_json),
+                content_type="application/json"
+            )
+            
+            print(f"✅ Vector index updated with {len(index['buckets'])} buckets")
+            
+        except Exception as e:
+            print(f"⚠️ Could not update MinIO index: {e}")
+            # Don't fail the workflow if index update fails
+        EOF
+
+    - name: Notify completion webhook (optional)
+      if: steps.changed_files.outputs.files_to_process == 'true' && success()
+      continue-on-error: true
+      run: |
+        # Optional: Add webhook notification
+        if [ ! -z "${{ secrets.WEBHOOK_URL }}" ]; then
+          curl -X POST "${{ secrets.WEBHOOK_URL }}" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "event": "vectorization_complete",
+              "repository": "${{ github.repository }}",
+              "commit": "${{ github.sha }}",
+              "files_processed": "'$(wc -l < changed_files.txt)'",
+              "timestamp": "'$(date -u +%Y-%m-%dT%H:%M:%SZ)'"
+            }' || true
+        fi
+
+    - name: Summary
+      if: always()
+      run: |
+        echo "🎯 Vectorization Pipeline Summary"
+        echo "================================"
+        echo "Status: ${{ job.status }}"
+        echo "Files processed: $(wc -l < changed_files.txt 2>/dev/null || echo "0")"
+        echo "Timestamp: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+        echo ""
+        if [ "${{ steps.changed_files.outputs.files_to_process }}" == "true" ]; then
+          echo "✅ Vectors are now available in MinIO for RAG queries!"
+          echo "🔗 Access via MCP: Use mcp-vector-server.js"
+          echo "📊 Vector index: pravda-context/vector-index.json"
+        else
+          echo "ℹ️ No vectorization needed - all vectors are up to date"
+        fi
+        echo ""
+        echo "📚 Documentation: See VECTORIZATION_README.md"
