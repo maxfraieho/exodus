@@ -1,30 +1,6 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="{{ meta.mainLanguage }}">
   <head>
-  <!-- Google tag (gtag.js) -->
-<script async src="https://www.googletagmanager.com/gtag/js?id=G-DZDWWLFFV8"></script>
-<script>
-  window.dataLayer = window.dataLayer || [];
-  function gtag(){dataLayer.push(arguments);}
-  gtag('js', new Date());
-
-  gtag('config', 'G-DZDWWLFFV8');
-</script>
-<!-- Matomo -->
-<script>
-  var _paq = window._paq = window._paq || [];
-  /* tracker methods like "setCustomDimension" should be called before "trackPageView" */
-  _paq.push(['trackPageView']);
-  _paq.push(['enableLinkTracking']);
-  (function() {
-    var u="//matomo.indposhyv.nohost.me/";
-    _paq.push(['setTrackerUrl', u+'matomo.php']);
-    _paq.push(['setSiteId', '1']);
-    var d=document, g=d.createElement('script'), s=d.getElementsByTagName('script')[0];
-    g.async=true; g.src=u+'matomo.js'; s.parentNode.insertBefore(g,s);
-  })();
-</script>
-<!-- End Matomo Code -->
     <title>{% if title %}{{ title }}{% else %}{{ page.fileSlug }}{% endif %}</title>
     {%include "components/pageheader.njk"%}
     {% for imp in dynamics.common.head %}
@@ -34,7 +10,7 @@
       {% include imp %}
     {% endfor %}
   </head>
-  <body class="theme-{{meta.baseTheme}} markdown-preview-view markdown-rendered markdown-preview-section {{meta.bodyClasses}}">
+  <body class="theme-{{meta.baseTheme}} markdown-preview-view markdown-rendered markdown-preview-section {% if settings.dgShowFileTree !== true %}no-filetree{% endif %} {% if settings.dgHomeLink === true and settings.dgShowFileTree !== true %}has-navbar{% endif %} {{meta.bodyClasses}}">
     {%include "components/notegrowthhistory.njk"%}
     {% if settings.dgShowFileTree !== true %}
       {%include "components/navbar.njk"%}
@@ -49,13 +25,7 @@
       {% if settings.dgShowInlineTitle === true %}
         <h1>{{ noteTitle  }}</h1>
       {% endif %}
-      {% if metatags is defined %}
-      {% if metatags.startsWith('https://') %}
-      <iframe src={{ metatags }} width="100%" height="940px">
-        <p>Ваш браузер не підтримує елемент iframe.</p>
-      </iframe>
-      {% endif %} 
-      {% endif %} 
+
       <div class="header-meta">
         {% if settings.dgShowTags === true and tags %}
           <div class="header-tags">
@@ -82,7 +52,7 @@
       {% for imp in dynamics.index.beforeContent %}
         {% include imp %}
       {% endfor %}
-      {{ content | hideDataview | link | taggify | safe}}
+      {{ content | hideDataview | taggify | link | safe}}
       {% for imp in dynamics.common.afterContent %}
         {% include imp %}
       {% endfor %}
@@ -105,23 +75,5 @@
       {% include imp %}
     {% endfor %}
     {%include "components/lucideIcons.njk"%}
-    <script> 
-    window.intergramId = "6412868393";
-    window.intergramCustomizations = {
-        mainColor: "#474747",
-        titleClosed: 'Je vous intéresse ?',
-        titleOpen: 'Nous écrivons ici',
-        introMessage: 'Un moyen rapide de me contacter. Écrivez un message ci-dessous et appuyez sur Entrée. Je vous répondrai dans les plus brefs délais.',
-        autoResponse: 'Un moment, le message est envoyé.',
-        autoNoResponse: 'Je ne pense pas pouvoir répondre maintenant ' +
-    'Laissez-moi vos coordonnées et je vous répondrai dès que possible.',
-        placeholderText : 'Envoyer un message...',
-        displayMessageTime: true,
-        visitorPronoun: 'Vous',
-        alwaysUseFloatingButton: false // Use the mobile floating button also on large screens
-    };
-    window.intergramServer = "https://www.intergram.xyz"
-</script>
-<script id="intergram" type="text/javascript" src="https://www.intergram.xyz/js/widget.js"></script>
     </body>
   </html>
